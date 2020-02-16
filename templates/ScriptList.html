@@ -5,7 +5,18 @@
     <title>{{.Title}}</title>
 </head>
 <body>
-    {{.ScriptList}}
-    {{.SelectedScript}}
+        <div class="ScriptList">
+            {{range $e := .ScriptList}}
+                <div class="ScriptListElement">
+                    {{$e.Result}}
+                    {{range $w := .Cases}}
+                        {{$w.Responses}}
+                        {{$w.ExpectedOutput}}
+                    {{end}}
+                </div>
+            {{end}}
+
+        </div>
+
 </body>
 </html>

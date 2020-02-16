@@ -6,6 +6,6 @@ type TestCase struct {
 }
 
 type TestScript struct {
-	cases  []TestCase `json:"testCases"`
+	Cases  []TestCase `json:"testCases"`
 	Result bool       `json:"-"`
 }

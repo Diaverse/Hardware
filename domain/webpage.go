@@ -10,6 +10,6 @@ type LoginPage struct {
 
 type ListPage struct {
 	Title          string
-	ScriptList     []string
+	ScriptList     []TestScript
 	SelectedScript string
 }

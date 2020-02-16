@@ -12,6 +12,7 @@ func main() {
 
 	mux.HandleFunc("/", controller.ServeLogin)
 	mux.HandleFunc("/listScripts", controller.ServeScriptListView)
+	mux.HandleFunc("/executeScript", controller.ExecuteTestScript)
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"../domain"
+	"encoding/json"
 	"github.com/prometheus/common/log"
 	"html/template"
 	"net/http"
@@ -29,9 +30,27 @@ func ServeLogin(w http.ResponseWriter, r *http.Request) {
 
 func ServeScriptListView(w http.ResponseWriter, r *http.Request) {
 	page := domain.ListPage{
-		Title:          "Diaverse Script View",
-		ScriptList:     []string{"Script 1", "Script 2", "Script 3"},
-		SelectedScript: "This one",
+		Title: "Diaverse Script View",
+		ScriptList: []domain.TestScript{
+			domain.TestScript{
+				Cases: []domain.TestCase{
+					domain.TestCase{
+						Responses:      []string{"Hello, how are you"},
+						ExpectedOutput: []string{"I am fine"},
+					},
+					domain.TestCase{
+						Responses:      []string{"what are you doing?"},
+						ExpectedOutput: []string{"absolutely nothing."},
+					},
+				},
+				Result: true,
+			},
+			domain.TestScript{
+				Cases:  []domain.TestCase{},
+				Result: true,
+			},
+		},
+		SelectedScript: "Script One",
 	}
 
 	t, err := template.ParseFiles("templates/ScriptList.html")
@@ -43,8 +62,17 @@ func ServeScriptListView(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, page)
 }
 
-//GatherTestScripts is a listener attached to the web UI. It queries the
-//page for the authentication token input text area and then displays the list of test scripts for that user
-func GatherTestScripts(w http.ResponseWriter, r *http.Request) {
+func ExecuteTestScript(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	scriptJson := r.Form.Get("testScript")
+	script := domain.TestScript{}
+	err := json.Unmarshal([]byte(scriptJson), &script)
+	if err != nil {
+		log.Error("Invalid script form passed to executor")
+		log.Error(err)
+		return
+	}
+	log.Info(script)
 
 }
