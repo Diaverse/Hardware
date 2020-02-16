@@ -2,6 +2,7 @@ package controller
 
 import (
 	"../domain"
+	"encoding/json"
 	"github.com/prometheus/common/log"
 	"html/template"
 	"net/http"
@@ -29,9 +30,27 @@ func ServeLogin(w http.ResponseWriter, r *http.Request) ***REMOVED***
 
 func ServeScriptListView(w http.ResponseWriter, r *http.Request) ***REMOVED***
 	page := domain.ListPage***REMOVED***
-		Title:          "Diaverse Script View",
-		ScriptList:     []string***REMOVED***"Script 1", "Script 2", "Script 3"***REMOVED***,
-		SelectedScript: "This one",
+		Title: "Diaverse Script View",
+		ScriptList: []domain.TestScript***REMOVED***
+			domain.TestScript***REMOVED***
+				Cases: []domain.TestCase***REMOVED***
+					domain.TestCase***REMOVED***
+						Responses:      []string***REMOVED***"Hello, how are you"***REMOVED***,
+						ExpectedOutput: []string***REMOVED***"I am fine"***REMOVED***,
+					***REMOVED***,
+					domain.TestCase***REMOVED***
+						Responses:      []string***REMOVED***"what are you doing?"***REMOVED***,
+						ExpectedOutput: []string***REMOVED***"absolutely nothing."***REMOVED***,
+					***REMOVED***,
+				***REMOVED***,
+				Result: true,
+			***REMOVED***,
+			domain.TestScript***REMOVED***
+				Cases:  []domain.TestCase***REMOVED******REMOVED***,
+				Result: true,
+			***REMOVED***,
+		***REMOVED***,
+		SelectedScript: "Script One",
 	***REMOVED***
 
 	t, err := template.ParseFiles("templates/ScriptList.html")
@@ -43,8 +62,17 @@ func ServeScriptListView(w http.ResponseWriter, r *http.Request) ***REMOVED***
 	t.Execute(w, page)
 ***REMOVED***
 
-//GatherTestScripts is a listener attached to the web UI. It queries the
-//page for the authentication token input text area and then displays the list of test scripts for that user
-func GatherTestScripts(w http.ResponseWriter, r *http.Request) ***REMOVED***
+func ExecuteTestScript(w http.ResponseWriter, r *http.Request) ***REMOVED***
+	defer r.Body.Close()
+
+	scriptJson := r.Form.Get("testScript")
+	script := domain.TestScript***REMOVED******REMOVED***
+	err := json.Unmarshal([]byte(scriptJson), &script)
+	if err != nil ***REMOVED***
+		log.Error("Invalid script form passed to executor")
+		log.Error(err)
+		return
+	***REMOVED***
+	log.Info(script)
 
 ***REMOVED***

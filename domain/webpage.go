@@ -10,6 +10,6 @@ type LoginPage struct ***REMOVED***
 
 type ListPage struct ***REMOVED***
 	Title          string
-	ScriptList     []string
+	ScriptList     []TestScript
 	SelectedScript string
 ***REMOVED***

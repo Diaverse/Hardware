@@ -6,6 +6,6 @@ type TestCase struct ***REMOVED***
 ***REMOVED***
 
 type TestScript struct ***REMOVED***
-	cases  []TestCase `json:"testCases"`
+	Cases  []TestCase `json:"testCases"`
 	Result bool       `json:"-"`
 ***REMOVED***
