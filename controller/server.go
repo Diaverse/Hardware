@@ -2,9 +2,11 @@ package controller
 
 import (
 	"../domain"
+	service "../service"
 	"encoding/json"
 	"github.com/prometheus/common/log"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -65,14 +67,47 @@ func ServeScriptListView(w http.ResponseWriter, r *http.Request) ***REMOVED***
 func ExecuteTestScript(w http.ResponseWriter, r *http.Request) ***REMOVED***
 	defer r.Body.Close()
 
-	scriptJson := r.Form.Get("testScript")
-	script := domain.TestScript***REMOVED******REMOVED***
-	err := json.Unmarshal([]byte(scriptJson), &script)
+	scriptJSON, err := ioutil.ReadAll(r.Body)
 	if err != nil ***REMOVED***
-		log.Error("Invalid script form passed to executor")
-		log.Error(err)
+		log.Error("Cannot read json body of requested test script")
+		w.Write([]byte("Cannot read json body of requested test script"))
+		r.Body.Close()
 		return
 	***REMOVED***
-	log.Info(script)
 
+	testScript := domain.TestScript***REMOVED******REMOVED***
+	err = json.Unmarshal(scriptJSON, &testScript)
+	if err != nil ***REMOVED***
+		log.Error("Could not unmarshal test script json")
+		r.Body.Close()
+		w.Write([]byte("Could not unmarshal test script json"))
+	***REMOVED***
+
+	//caseResults := make([]bool, len(testScript.Cases))
+	for _, e := range testScript.Cases ***REMOVED***
+
+		//generate all required TTS
+		for j, k := range e.Responses ***REMOVED***
+
+			//the test hardware always speaks first.
+			service.SpeakAloud(k)
+
+			//try and listen three times before we continue
+			for n := 0; n < 2; n++ ***REMOVED***
+				resp, conf, err := service.Recognize()
+				if err != nil ***REMOVED***
+					log.Fatal("Failed to begin recognition")
+				***REMOVED***
+
+				if conf >= 0.8 ***REMOVED***
+					if service.TranscriptionConfidence(resp, e.ExpectedOutput[j]) >= 0.8 ***REMOVED***
+						//only continue until we have both an ASR confidence and NLU confidence of 80% or more.
+						break
+					***REMOVED***
+				***REMOVED*** else ***REMOVED***
+					service.SpeakAloud(k)
+				***REMOVED***
+			***REMOVED***
+		***REMOVED***
+	***REMOVED***
 ***REMOVED***
