@@ -6,6 +6,9 @@ import (
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"context"
 	"fmt"
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 	"io/ioutil"
 	"log"
@@ -14,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 ///	TEXT TO SPEECH ///
@@ -144,6 +148,39 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 
 }
 
+func SpeakAloud(text string) {
+
+	if !CheckForFile("/audio/" + text) {
+		SpeechRequest{
+			Text:         text,
+			LanguageCode: "en-US",
+			SsmlGender:   "FEMALE",
+			VoiceName:    "en-us-Wavenet-C",
+		}.SpeakToFile("audio/" + text + ".mp3")
+	}
+
+	f, err := os.Open("audio/" + text)
+	if err != nil {
+		log.Fatal("Could not complete required audio I/O.")
+	}
+	streamer, format, err := mp3.Decode(f)
+	if err != nil {
+		log.Fatal("Could not construct streamer from decoded input file")
+	}
+
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	done := make(chan bool)
+	speaker.Play(streamer, beep.Callback(func() {
+		done <- true
+	}))
+
+	//wait for the file to stop playing
+	<-done
+
+	//must be called.
+	streamer.Close()
+}
+
 //short hand for quick error checks
 func checkErr(e error) {
 	if e != nil {
@@ -156,6 +193,24 @@ func checkSpeechErr(exampleError SpeechExampleError) {
 	if exampleError.Message != "" {
 		fmt.Println(exampleError.Message)
 	}
+}
+
+func TranscriptionConfidence(transcription string, exact string) float64 {
+
+	wordsTranscribed := strings.Split(transcription, " ")
+	wordsExpected := strings.Split(exact, " ")
+	totalWords := float64(len(wordsTranscribed))
+	wordsFound := 0.0
+	//a fancy golang foreach
+	for wordTranscribed := range wordsTranscribed {
+		for wordExpected := range wordsExpected {
+			if wordTranscribed == wordExpected {
+				wordsFound++
+			}
+		}
+	}
+
+	return wordsFound / totalWords
 }
 
 /// SPEECH TO TEXT ///
