@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#This file is required for the hardware to listen from our physical microphone. It uses Gstreamer as an audio framework for capture and conversion of the audio into the spec'd format.
+#The filesink is required to output what we capture from the microphone to the terminal, the terminal output is then passed to the google API's. The function which reads this script will
+#Read the StdOut and use regular expressions to extract the required information from the API response.
+
+gst-launch-1.0 -v pulsesrc ! audioconvert ! audioresample ! audio/x-raw,channels=1,rate=16000 ! filesink location=/dev/stdout | ./livecaption

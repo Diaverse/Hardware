@@ -111,3 +111,7 @@ func ExecuteTestScript(w http.ResponseWriter, r *http.Request) ***REMOVED***
 		***REMOVED***
 	***REMOVED***
 ***REMOVED***
+
+func RegisterHardware(w http.ResponseWriter, r *http.Request)***REMOVED***
+
+***REMOVED***

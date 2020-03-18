@@ -1,0 +1,6 @@
+#!/bin/bash
+
+inputfile="testdata.txt"
+cat $inputfile | while read username token; do
+    echo "INSERT INTO hardwareTokens (username,token) VALUES ('$username', '$token');"
+done | mysql VUI;

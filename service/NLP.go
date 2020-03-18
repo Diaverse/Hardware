@@ -151,12 +151,14 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 func SpeakAloud(text string) ***REMOVED***
 
 	if !CheckForFile("/audio/" + text) ***REMOVED***
-		SpeechRequest***REMOVED***
+		req := SpeechRequest***REMOVED***
 			Text:         text,
 			LanguageCode: "en-US",
 			SsmlGender:   "FEMALE",
 			VoiceName:    "en-us-Wavenet-C",
-		***REMOVED***.SpeakToFile("audio/" + text + ".mp3")
+		***REMOVED***
+
+		req.SpeakToFile("audio/" + text + ".mp3")
 	***REMOVED***
 
 	f, err := os.Open("audio/" + text)
