@@ -1,11 +1,11 @@
 package domain
 
 type TestCase struct ***REMOVED***
-	Responses      []string `json:"Responses"`
-	ExpectedOutput []string `json:"ExpectedOutput"`
+	HardwareOutput []string `json:"hardwareOutput"`
+	HardwareInput  []string `json:"hardwareInput"`
 ***REMOVED***
 
 type TestScript struct ***REMOVED***
-	Cases  []TestCase `json:"testCases"`
-	Result bool       `json:"-"`
+	TestCases []TestCase `json:"testCases"`
+	Result    bool       `json:"-"`
 ***REMOVED***

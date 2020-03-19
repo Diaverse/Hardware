@@ -160,7 +160,7 @@ func SpeakAloud(text string) ***REMOVED***
 
 		req.SpeakToFile("audio/" + text + ".mp3")
 	***REMOVED***
-
+	log.Println("opening file")
 	f, err := os.Open("audio/" + text)
 	if err != nil ***REMOVED***
 		log.Fatal("Could not complete required audio I/O.")
