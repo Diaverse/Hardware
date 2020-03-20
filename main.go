@@ -19,7 +19,7 @@ func StartServer() ***REMOVED***
 	mux.HandleFunc("/listScripts", controller.ServeScriptListView)
 	mux.HandleFunc("/register", controller.RegisterHardware)
 	mux.HandleFunc("/executeScript", controller.ExecuteTestScriptHandler)
-
+	controller.InitilizeStructs()
 	log.Info("Starting server on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 

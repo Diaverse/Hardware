@@ -4,6 +4,7 @@ import (
 	"../domain"
 	"encoding/json"
 	"github.com/prometheus/common/log"
+	"sync"
 
 	"html/template"
 	"io/ioutil"
@@ -64,39 +65,75 @@ func ServeScriptListView(w http.ResponseWriter, r *http.Request) ***REMOVED***
 	//t.Execute(w, page)
 ***REMOVED***
 
+var scriptInProgress struct ***REMOVED***
+	sync.RWMutex
+	bool
+***REMOVED***
+
+func InitilizeStructs() ***REMOVED***
+	scriptInProgress.bool = false
+***REMOVED***
+
 func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) ***REMOVED***
-	defer r.Body.Close()
-	log.Info("Got test script")
+	scriptInProgress.Lock()
+	curState := scriptInProgress.bool
+	scriptInProgress.Unlock()
 
-	scriptJSON, err := ioutil.ReadAll(r.Body)
-	if err != nil ***REMOVED***
-		log.Error("Cannot read json body of requested test script")
-		w.Write([]byte("Cannot read json body of requested test script"))
-		r.Body.Close()
-		return
-	***REMOVED***
+	if !curState ***REMOVED***
+		scriptInProgress.Lock()
+		scriptInProgress.bool = true
+		scriptInProgress.Unlock()
 
-	script := domain.TestScript***REMOVED******REMOVED***
-	e := json.Unmarshal(scriptJSON, &script)
-	if e != nil ***REMOVED***
+		defer r.Body.Close()
+		log.Info("Got test script")
 
-		w.Write([]byte("Invalid Script format."))
-		return
-	***REMOVED***
-
-	scriptError := ExecuteTestScript(&script)
-	if scriptError != nil ***REMOVED***
-
-		w.Write([]byte("Error executing test script, view service logs for additional information."))
-		return
-	***REMOVED*** else ***REMOVED***
-		if script.Result == true ***REMOVED***
-			w.Write([]byte("Test script completed successfully!"))
-			return
-		***REMOVED*** else ***REMOVED***
-			w.Write([]byte("Test script failed. Check service logs for more information."))
+		scriptJSON, err := ioutil.ReadAll(r.Body)
+		if err != nil ***REMOVED***
+			log.Error("Cannot read json body of requested test script")
+			w.Write([]byte("Cannot read json body of requested test script"))
+			r.Body.Close()
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
 			return
 		***REMOVED***
+
+		script := domain.TestScript***REMOVED******REMOVED***
+		e := json.Unmarshal(scriptJSON, &script)
+		if e != nil ***REMOVED***
+
+			w.Write([]byte("Invalid Script format."))
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
+			return
+		***REMOVED***
+
+		scriptError := ExecuteTestScript(&script)
+		if scriptError != nil ***REMOVED***
+
+			w.Write([]byte("Error executing test script, view service logs for additional information."))
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
+			return
+		***REMOVED*** else ***REMOVED***
+			if script.Result == true ***REMOVED***
+				w.Write([]byte("Test script completed successfully!"))
+				scriptInProgress.Lock()
+				scriptInProgress.bool = false
+				scriptInProgress.Unlock()
+				return
+			***REMOVED*** else ***REMOVED***
+				w.Write([]byte("Test script failed. Check service logs for more information."))
+				scriptInProgress.Lock()
+				scriptInProgress.bool = false
+				scriptInProgress.Unlock()
+				return
+			***REMOVED***
+		***REMOVED***
+	***REMOVED*** else ***REMOVED***
+		w.Write([]byte("Test script already in progress, resend script after current script completes, or cancel current script."))
 	***REMOVED***
 ***REMOVED***
 
