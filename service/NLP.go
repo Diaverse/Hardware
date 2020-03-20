@@ -233,25 +233,30 @@ func Recognize() (string, float64, error) ***REMOVED***
 	cmdName := "/home/pi/Hardware/service/recognize"
 	cmdArgs := []string***REMOVED******REMOVED***
 	cmd := exec.Command(cmdName, cmdArgs...)
-	//We need to create a reader for the stdout of this script
-	cmdReader, err := cmd.StderrPipe()
-	if err != nil ***REMOVED***
-		fmt.Println("Error creating StdoutPipe for Cmd", err)
-		os.Exit(1)
-	***REMOVED***
 
 	//If we want to return the values that are returned from the above script
 	//we need to declare the return values at a higher scope
 	transcription := ""
 	confidence := 0.0
 
-	//A scanner is created to read the stdout of the above command
-	scanner := bufio.NewScanner(cmdReader)
+	stderr, err := cmd.StderrPipe() //Stderr for whatever reason.
 
-	//A new go thread is created to handle the audio streaming and subsequent response bodies
+	//We need to start our goroutine from the main thread
+	fmt.Println("STARTING.")
+	err = cmd.Start()
+	if err != nil ***REMOVED***
+		fmt.Println("Error starting Cmd", err)
+		os.Exit(1)
+	***REMOVED***
+
 	go func() ***REMOVED***
+		//We need to create a reader for the stdout of this script
+		//A scanner is created to read the stdout of the above command
+		scanner := bufio.NewScanner(stderr)
+
 		for scanner.Scan() ***REMOVED***
-			fmt.Println("Response Recognized...")
+			fmt.Println("Response Recognized ON STD OUT...")
+			fmt.Println(scanner.Text())
 			//A Third party can interrupt this streaming process by simply saying "stop"
 			//useful when you want to stop the test, but don't want orphan processes
 			if strings.Contains(scanner.Text(), "stop") ***REMOVED***
@@ -279,23 +284,14 @@ func Recognize() (string, float64, error) ***REMOVED***
 				***REMOVED***
 
 				//Now that we have our transcription we can stop the recognition process
-				if err := cmd.Process.Kill(); err != nil ***REMOVED***
-					log.Fatal("failed to kill process: ", err)
+				if err := cmd.Process.Signal(os.Kill); err != nil ***REMOVED***
+					log.Println(cmd.ProcessState.String())
 				***REMOVED***
 			***REMOVED***
 		***REMOVED***
 	***REMOVED***()
 
-	//We need to start our goroutine from the main thread
-	fmt.Println("STARTING.")
-	err = cmd.Start()
-	if err != nil ***REMOVED***
-		fmt.Println("Error starting Cmd", err)
-		os.Exit(1)
-	***REMOVED***
-
 	//We need to wait for a transcription before we can return said transcription
-	fmt.Println("WAITING.")
 	err = cmd.Wait()
 	var out bytes.Buffer
 	if err != nil && transcription == "" ***REMOVED***
@@ -303,6 +299,7 @@ func Recognize() (string, float64, error) ***REMOVED***
 		fmt.Println(fmt.Sprint(err) + ": " + out.String())
 		return transcription, confidence, err
 	***REMOVED***
+	fmt.Println(cmd.ProcessState.String())
 	return transcription, confidence, nil
 ***REMOVED***
 

@@ -4,6 +4,7 @@ import (
 	"../domain"
 	"encoding/json"
 	"github.com/prometheus/common/log"
+
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -74,27 +75,26 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) ***REMOVED
 		r.Body.Close()
 		return
 	***REMOVED***
+
 	script := domain.TestScript***REMOVED******REMOVED***
 	e := json.Unmarshal(scriptJSON, &script)
 	if e != nil ***REMOVED***
+
 		w.Write([]byte("Invalid Script format."))
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	***REMOVED***
 
 	scriptError := ExecuteTestScript(&script)
 	if scriptError != nil ***REMOVED***
+
 		w.Write([]byte("Error executing test script, view service logs for additional information."))
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	***REMOVED*** else ***REMOVED***
 		if script.Result == true ***REMOVED***
 			w.Write([]byte("Test script completed successfully!"))
-			w.WriteHeader(http.StatusOK)
 			return
 		***REMOVED*** else ***REMOVED***
 			w.Write([]byte("Test script failed. Check service logs for more information."))
-			w.WriteHeader(http.StatusOK)
 			return
 		***REMOVED***
 	***REMOVED***
