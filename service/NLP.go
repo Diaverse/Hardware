@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/wav"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 	"io/ioutil"
 	"log"
@@ -134,7 +134,7 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	//create and return the request
 	return texttospeechpb.SynthesizeSpeechRequest***REMOVED***
 		AudioConfig: &texttospeechpb.AudioConfig***REMOVED***
-			AudioEncoding: texttospeechpb.AudioEncoding_MP3,
+			AudioEncoding: texttospeechpb.AudioEncoding_LINEAR16,
 		***REMOVED***,
 
 		Voice: &texttospeechpb.VoiceSelectionParams***REMOVED***
@@ -157,16 +157,20 @@ func SpeakAloud(text string) ***REMOVED***
 			SsmlGender:   "FEMALE",
 			VoiceName:    "en-us-Wavenet-C",
 		***REMOVED***
-
-		req.SpeakToFile("audio/" + text + ".mp3")
+		log.Println("Attempting to write to file, dir = audio/" + text + ".wav")
+		req.SpeakToFile("/home/pi/Hardware/audio/" + text + ".wav")
 	***REMOVED***
 	log.Println("opening file")
-	f, err := os.Open("audio/" + text)
+	f, err := os.Open("/home/pi/Hardware/audio/" + text + ".wav")
 	if err != nil ***REMOVED***
+		log.Println(err)
 		log.Fatal("Could not complete required audio I/O.")
 	***REMOVED***
-	streamer, format, err := mp3.Decode(f)
+
+	streamer, format, err := wav.Decode(f)
 	if err != nil ***REMOVED***
+		log.Println(format)
+		log.Println(err)
 		log.Fatal("Could not construct streamer from decoded input file")
 	***REMOVED***
 
@@ -226,11 +230,11 @@ func TranscriptionConfidence(transcription string, exact string) float64 ***REMO
 func Recognize() (string, float64, error) ***REMOVED***
 
 	//First we need to craft the command we want to execute
-	cmdName := "SpeechToTextExamples/scripts/recognize"
-	cmdArgs := []string***REMOVED***""***REMOVED***
+	cmdName := "/home/pi/Hardware/service/recognize"
+	cmdArgs := []string***REMOVED******REMOVED***
 	cmd := exec.Command(cmdName, cmdArgs...)
 	//We need to create a reader for the stdout of this script
-	cmdReader, err := cmd.StdoutPipe()
+	cmdReader, err := cmd.StderrPipe()
 	if err != nil ***REMOVED***
 		fmt.Println("Error creating StdoutPipe for Cmd", err)
 		os.Exit(1)
@@ -247,7 +251,6 @@ func Recognize() (string, float64, error) ***REMOVED***
 	//A new go thread is created to handle the audio streaming and subsequent response bodies
 	go func() ***REMOVED***
 		for scanner.Scan() ***REMOVED***
-
 			fmt.Println("Response Recognized...")
 			//A Third party can interrupt this streaming process by simply saying "stop"
 			//useful when you want to stop the test, but don't want orphan processes
@@ -284,6 +287,7 @@ func Recognize() (string, float64, error) ***REMOVED***
 	***REMOVED***()
 
 	//We need to start our goroutine from the main thread
+	fmt.Println("STARTING.")
 	err = cmd.Start()
 	if err != nil ***REMOVED***
 		fmt.Println("Error starting Cmd", err)
@@ -291,11 +295,11 @@ func Recognize() (string, float64, error) ***REMOVED***
 	***REMOVED***
 
 	//We need to wait for a transcription before we can return said transcription
+	fmt.Println("WAITING.")
 	err = cmd.Wait()
 	var out bytes.Buffer
 	if err != nil && transcription == "" ***REMOVED***
 		fmt.Println("Recognition crash")
-		fmt.Println("tried to run the command : ./scripts/recognize")
 		fmt.Println(fmt.Sprint(err) + ": " + out.String())
 		return transcription, confidence, err
 	***REMOVED***

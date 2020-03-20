@@ -14,6 +14,15 @@ func CheckForFile(fileDir string) bool ***REMOVED***
 	return true
 ***REMOVED***
 
+func CheckForAudioFile(fileName string) bool ***REMOVED***
+	_, err := os.Stat("/home/pi/Hardware/audio/" + fileName)
+	if err != nil ***REMOVED***
+		fmt.Println(err)
+		return false
+	***REMOVED***
+	return true
+***REMOVED***
+
 //credit for below function https://bit.ly/3ae0afW
 func DumpMap(space string, m map[string]interface***REMOVED******REMOVED***) ***REMOVED***
 	for k, v := range m ***REMOVED***

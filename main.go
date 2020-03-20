@@ -4,11 +4,13 @@ import (
 	"./controller"
 	"github.com/prometheus/common/log"
 	"net/http"
+	//"./service"
 )
 
 //This file simply starts the local server
 func main() ***REMOVED***
 	StartServer()
+	//service.Recognize()
 ***REMOVED***
 
 func StartServer() ***REMOVED***
