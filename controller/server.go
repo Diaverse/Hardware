@@ -2,10 +2,9 @@ package controller
 
 import (
 	"../domain"
+	service "../service"
 	"encoding/json"
 	"github.com/prometheus/common/log"
-	"sync"
-
 	"html/template"
 	"io/ioutil"
 	"net/http"

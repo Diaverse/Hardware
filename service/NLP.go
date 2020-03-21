@@ -291,6 +291,13 @@ func Recognize() (string, float64, error) {
 		}
 	}()
 
+	//We need to start our goroutine from the main thread
+	err = cmd.Start()
+	if err != nil {
+		fmt.Println("Error starting Cmd", err)
+		os.Exit(1)
+	}
+
 	//We need to wait for a transcription before we can return said transcription
 	err = cmd.Wait()
 	var out bytes.Buffer

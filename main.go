@@ -4,7 +4,6 @@ import (
 	"./controller"
 	"github.com/prometheus/common/log"
 	"net/http"
-	//"./service"
 )
 
 //This file simply starts the local server
