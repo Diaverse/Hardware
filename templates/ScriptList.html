@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>***REMOVED******REMOVED***.Title***REMOVED******REMOVED***</title>
+    <title>{{.Title}}</title>
 </head>
 <body>
         <div class="ScriptList">
-            ***REMOVED******REMOVED***range $e := .ScriptList***REMOVED******REMOVED***
+            {{range $e := .ScriptList}}
                 <div class="ScriptListElement">
-                    ***REMOVED******REMOVED***$e.Result***REMOVED******REMOVED***
-                    ***REMOVED******REMOVED***range $w := .Cases***REMOVED******REMOVED***
-                        ***REMOVED******REMOVED***$w.Responses***REMOVED******REMOVED***
-                        ***REMOVED******REMOVED***$w.ExpectedOutput***REMOVED******REMOVED***
-                    ***REMOVED******REMOVED***end***REMOVED******REMOVED***
+                    {{$e.Result}}
+                    {{range $w := .Cases}}
+                        {{$w.Responses}}
+                        {{$w.ExpectedOutput}}
+                    {{end}}
                 </div>
-            ***REMOVED******REMOVED***end***REMOVED******REMOVED***
+            {{end}}
 
         </div>
 

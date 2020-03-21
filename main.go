@@ -8,19 +8,21 @@ import (
 )
 
 //This file simply starts the local server
-func main() ***REMOVED***
+func main() {
 	StartServer()
 	//service.Recognize()
-***REMOVED***
+}
 
-func StartServer() ***REMOVED***
+func StartServer() {
 	mux := http.DefaultServeMux
-	mux.HandleFunc("/", controller.ServeLogin)
+	fs := http.FileServer(http.Dir("./templates"))
+	mux.Handle("/", fs)
+
 	mux.HandleFunc("/listScripts", controller.ServeScriptListView)
 	mux.HandleFunc("/register", controller.RegisterHardware)
 	mux.HandleFunc("/executeScript", controller.ExecuteTestScriptHandler)
-
+	controller.InitilizeStructs()
 	log.Info("Starting server on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
-***REMOVED***
+}

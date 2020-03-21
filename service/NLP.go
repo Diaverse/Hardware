@@ -26,21 +26,21 @@ import (
 
 /// Structs ///
 
-type SpeechRequest struct ***REMOVED***
+type SpeechRequest struct {
 	Text         string
 	LanguageCode string
 	SsmlGender   string
 	VoiceName    string
-***REMOVED***
+}
 
-type SpeechExampleError struct ***REMOVED***
+type SpeechExampleError struct {
 	Message string
-***REMOVED***
+}
 
 /// Core func's ///
 
 //SpeakToFile uses the values within the receiver to open a connection to GCP, create a request, and then take the response and put it into a file.
-func (st *SpeechRequest) SpeakToFile(outputFile string) ***REMOVED***
+func (st *SpeechRequest) SpeakToFile(outputFile string) {
 
 	//Create a go context, a key component of nearly all golang web requests
 	ctx := context.Background()
@@ -66,9 +66,9 @@ func (st *SpeechRequest) SpeakToFile(outputFile string) ***REMOVED***
 	checkErr(err)
 
 	fmt.Printf("TTS Successfully written to %s", outputFile)
-***REMOVED***
+}
 
-func (pt *SpeechRequest) SpeakFromFileToFile(inputFile string, outputFile string) ***REMOVED***
+func (pt *SpeechRequest) SpeakFromFileToFile(inputFile string, outputFile string) {
 
 	//Read the contents of the input file and pass them to the struct
 	content, err := ioutil.ReadFile(inputFile)
@@ -77,9 +77,9 @@ func (pt *SpeechRequest) SpeakFromFileToFile(inputFile string, outputFile string
 
 	//Proceed to translate the contents
 	pt.SpeakToFile(outputFile)
-***REMOVED***
+}
 
-func (st *SpeechRequest) SpeakToStream() []byte ***REMOVED***
+func (st *SpeechRequest) SpeakToStream() []byte {
 
 	ctx := context.Background()
 	client, err := texttospeech.NewClient(ctx)
@@ -93,131 +93,131 @@ func (st *SpeechRequest) SpeakToStream() []byte ***REMOVED***
 	checkErr(err)
 
 	return resp.AudioContent
-***REMOVED***
+}
 
 /// Supporting funcs ///
 
-func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpeechRequest, SpeechExampleError) ***REMOVED***
+func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpeechRequest, SpeechExampleError) {
 
 	//make sure st has the required values
 
-	if st.Text == "" ***REMOVED***
-		return texttospeechpb.SynthesizeSpeechRequest***REMOVED******REMOVED***, SpeechExampleError***REMOVED***Message: "TTS Request Has Empty Text"***REMOVED***
-	***REMOVED***
+	if st.Text == "" {
+		return texttospeechpb.SynthesizeSpeechRequest{}, SpeechExampleError{Message: "TTS Request Has Empty Text"}
+	}
 
-	if st.LanguageCode == "" ***REMOVED***
-		return texttospeechpb.SynthesizeSpeechRequest***REMOVED******REMOVED***, SpeechExampleError***REMOVED***Message: "TTS Request Has Empty Language Code"***REMOVED***
-	***REMOVED***
+	if st.LanguageCode == "" {
+		return texttospeechpb.SynthesizeSpeechRequest{}, SpeechExampleError{Message: "TTS Request Has Empty Language Code"}
+	}
 
-	if st.SsmlGender == "" ***REMOVED***
-		return texttospeechpb.SynthesizeSpeechRequest***REMOVED******REMOVED***, SpeechExampleError***REMOVED***Message: "TTS Request Has Empty Ssml Gender"***REMOVED***
-	***REMOVED***
+	if st.SsmlGender == "" {
+		return texttospeechpb.SynthesizeSpeechRequest{}, SpeechExampleError{Message: "TTS Request Has Empty Ssml Gender"}
+	}
 
-	if st.VoiceName == "" ***REMOVED***
-		return texttospeechpb.SynthesizeSpeechRequest***REMOVED******REMOVED***, SpeechExampleError***REMOVED***Message: "TTS Request Has Empty Voice Name"***REMOVED***
-	***REMOVED***
+	if st.VoiceName == "" {
+		return texttospeechpb.SynthesizeSpeechRequest{}, SpeechExampleError{Message: "TTS Request Has Empty Voice Name"}
+	}
 
 	// convert input strings to the proper types
 	gender := texttospeechpb.SsmlVoiceGender_FEMALE
-	if strings.Contains(st.SsmlGender, "MALE") ***REMOVED***
+	if strings.Contains(st.SsmlGender, "MALE") {
 		gender = texttospeechpb.SsmlVoiceGender_MALE
-	***REMOVED***
-	if st.SsmlGender == "" ***REMOVED***
+	}
+	if st.SsmlGender == "" {
 		gender = texttospeechpb.SsmlVoiceGender_NEUTRAL
-	***REMOVED***
+	}
 
-	input := &texttospeechpb.SynthesisInput***REMOVED***InputSource: &texttospeechpb.SynthesisInput_Text***REMOVED***Text: st.Text***REMOVED******REMOVED***
-	if strings.Contains(st.Text, "<speak>") ***REMOVED***
-		input = &texttospeechpb.SynthesisInput***REMOVED***InputSource: &texttospeechpb.SynthesisInput_Ssml***REMOVED***Ssml: st.Text***REMOVED******REMOVED***
-	***REMOVED***
+	input := &texttospeechpb.SynthesisInput{InputSource: &texttospeechpb.SynthesisInput_Text{Text: st.Text}}
+	if strings.Contains(st.Text, "<speak>") {
+		input = &texttospeechpb.SynthesisInput{InputSource: &texttospeechpb.SynthesisInput_Ssml{Ssml: st.Text}}
+	}
 
 	//create and return the request
-	return texttospeechpb.SynthesizeSpeechRequest***REMOVED***
-		AudioConfig: &texttospeechpb.AudioConfig***REMOVED***
+	return texttospeechpb.SynthesizeSpeechRequest{
+		AudioConfig: &texttospeechpb.AudioConfig{
 			AudioEncoding: texttospeechpb.AudioEncoding_LINEAR16,
-		***REMOVED***,
+		},
 
-		Voice: &texttospeechpb.VoiceSelectionParams***REMOVED***
+		Voice: &texttospeechpb.VoiceSelectionParams{
 			LanguageCode: st.LanguageCode,
 			Name:         st.VoiceName,
 			SsmlGender:   gender,
-		***REMOVED***,
+		},
 
 		Input: input,
-	***REMOVED***, SpeechExampleError***REMOVED******REMOVED***
+	}, SpeechExampleError{}
 
-***REMOVED***
+}
 
-func SpeakAloud(text string) ***REMOVED***
+func SpeakAloud(text string) {
 
-	if !CheckForFile("/audio/" + text) ***REMOVED***
-		req := SpeechRequest***REMOVED***
+	if !CheckForFile("/audio/" + text) {
+		req := SpeechRequest{
 			Text:         text,
 			LanguageCode: "en-US",
 			SsmlGender:   "FEMALE",
 			VoiceName:    "en-us-Wavenet-C",
-		***REMOVED***
+		}
 		log.Println("Attempting to write to file, dir = audio/" + text + ".wav")
 		req.SpeakToFile("/home/pi/Hardware/audio/" + text + ".wav")
-	***REMOVED***
+	}
 	log.Println("opening file")
 	f, err := os.Open("/home/pi/Hardware/audio/" + text + ".wav")
-	if err != nil ***REMOVED***
+	if err != nil {
 		log.Println(err)
 		log.Fatal("Could not complete required audio I/O.")
-	***REMOVED***
+	}
 
 	streamer, format, err := wav.Decode(f)
-	if err != nil ***REMOVED***
+	if err != nil {
 		log.Println(format)
 		log.Println(err)
 		log.Fatal("Could not construct streamer from decoded input file")
-	***REMOVED***
+	}
 
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	done := make(chan bool)
-	speaker.Play(streamer, beep.Callback(func() ***REMOVED***
+	speaker.Play(streamer, beep.Callback(func() {
 		done <- true
-	***REMOVED***))
+	}))
 
 	//wait for the file to stop playing
 	<-done
 
 	//must be called.
 	streamer.Close()
-***REMOVED***
+}
 
 //short hand for quick error checks
-func checkErr(e error) ***REMOVED***
-	if e != nil ***REMOVED***
+func checkErr(e error) {
+	if e != nil {
 		fmt.Print(e)
-	***REMOVED***
-***REMOVED***
+	}
+}
 
 //short hand for speechExampleError checks
-func checkSpeechErr(exampleError SpeechExampleError) ***REMOVED***
-	if exampleError.Message != "" ***REMOVED***
+func checkSpeechErr(exampleError SpeechExampleError) {
+	if exampleError.Message != "" {
 		fmt.Println(exampleError.Message)
-	***REMOVED***
-***REMOVED***
+	}
+}
 
-func TranscriptionConfidence(transcription string, exact string) float64 ***REMOVED***
+func TranscriptionConfidence(transcription string, exact string) float64 {
 
 	wordsTranscribed := strings.Split(transcription, " ")
 	wordsExpected := strings.Split(exact, " ")
 	totalWords := float64(len(wordsTranscribed))
 	wordsFound := 0.0
 	//a fancy golang foreach
-	for wordTranscribed := range wordsTranscribed ***REMOVED***
-		for wordExpected := range wordsExpected ***REMOVED***
-			if wordTranscribed == wordExpected ***REMOVED***
+	for wordTranscribed := range wordsTranscribed {
+		for wordExpected := range wordsExpected {
+			if wordTranscribed == wordExpected {
 				wordsFound++
-			***REMOVED***
-		***REMOVED***
-	***REMOVED***
+			}
+		}
+	}
 
 	return wordsFound / totalWords
-***REMOVED***
+}
 
 /// SPEECH TO TEXT ///
 
@@ -227,38 +227,43 @@ func TranscriptionConfidence(transcription string, exact string) float64 ***REMO
 //which then formats the audio stream and passes it to the google cloud platform
 //We continue to stream to the GCP until we receive a non-empty response body
 //at which point we return the contents and kill the streaming process.
-func Recognize() (string, float64, error) ***REMOVED***
+func Recognize() (string, float64, error) {
 
 	//First we need to craft the command we want to execute
 	cmdName := "/home/pi/Hardware/service/recognize"
-	cmdArgs := []string***REMOVED******REMOVED***
+	cmdArgs := []string{}
 	cmd := exec.Command(cmdName, cmdArgs...)
-	//We need to create a reader for the stdout of this script
-	cmdReader, err := cmd.StderrPipe()
-	if err != nil ***REMOVED***
-		fmt.Println("Error creating StdoutPipe for Cmd", err)
-		os.Exit(1)
-	***REMOVED***
 
 	//If we want to return the values that are returned from the above script
 	//we need to declare the return values at a higher scope
 	transcription := ""
 	confidence := 0.0
 
-	//A scanner is created to read the stdout of the above command
-	scanner := bufio.NewScanner(cmdReader)
+	stderr, err := cmd.StderrPipe() //Stderr for whatever reason.
 
-	//A new go thread is created to handle the audio streaming and subsequent response bodies
-	go func() ***REMOVED***
-		for scanner.Scan() ***REMOVED***
-			fmt.Println("Response Recognized...")
+	//We need to start our goroutine from the main thread
+	fmt.Println("STARTING.")
+	err = cmd.Start()
+	if err != nil {
+		fmt.Println("Error starting Cmd", err)
+		os.Exit(1)
+	}
+
+	go func() {
+		//We need to create a reader for the stdout of this script
+		//A scanner is created to read the stdout of the above command
+		scanner := bufio.NewScanner(stderr)
+
+		for scanner.Scan() {
+			fmt.Println("Response Recognized ON STD OUT...")
+			fmt.Println(scanner.Text())
 			//A Third party can interrupt this streaming process by simply saying "stop"
 			//useful when you want to stop the test, but don't want orphan processes
-			if strings.Contains(scanner.Text(), "stop") ***REMOVED***
-				if err := cmd.Process.Kill(); err != nil ***REMOVED***
+			if strings.Contains(scanner.Text(), "stop") {
+				if err := cmd.Process.Kill(); err != nil {
 					log.Fatal("failed to kill process: ", err)
-				***REMOVED***
-			***REMOVED***
+				}
+			}
 
 			//Regular expressions are used to parse out the transcription and confidence score
 			//from the return body of our API request
@@ -269,48 +274,40 @@ func Recognize() (string, float64, error) ***REMOVED***
 			conf := confRegx.FindStringSubmatch(scanner.Text())
 
 			//We need to ensure that an empty response body doesn't stop our recognition
-			if len(match) != 0 ***REMOVED***
+			if len(match) != 0 {
 				transcription = match[1]
 				confidence, err = strconv.ParseFloat(conf[1], 64)
-				if err != nil ***REMOVED***
+				if err != nil {
 					fmt.Println("Could not convert confidence from string to float64")
 					fmt.Println(conf[1])
 					fmt.Println(match[1])
-				***REMOVED***
+				}
 
 				//Now that we have our transcription we can stop the recognition process
-				if err := cmd.Process.Kill(); err != nil ***REMOVED***
-					log.Fatal("failed to kill process: ", err)
-				***REMOVED***
-			***REMOVED***
-		***REMOVED***
-	***REMOVED***()
-
-	//We need to start our goroutine from the main thread
-	fmt.Println("STARTING.")
-	err = cmd.Start()
-	if err != nil ***REMOVED***
-		fmt.Println("Error starting Cmd", err)
-		os.Exit(1)
-	***REMOVED***
+				if err := cmd.Process.Signal(os.Kill); err != nil {
+					log.Println(cmd.ProcessState.String())
+				}
+			}
+		}
+	}()
 
 	//We need to wait for a transcription before we can return said transcription
-	fmt.Println("WAITING.")
 	err = cmd.Wait()
 	var out bytes.Buffer
-	if err != nil && transcription == "" ***REMOVED***
+	if err != nil && transcription == "" {
 		fmt.Println("Recognition crash")
 		fmt.Println(fmt.Sprint(err) + ": " + out.String())
 		return transcription, confidence, err
-	***REMOVED***
+	}
+	fmt.Println(cmd.ProcessState.String())
 	return transcription, confidence, nil
-***REMOVED***
+}
 
 /// Supporting Funcs ///
 
-func c(err error) ***REMOVED***
-	if err != nil ***REMOVED***
+func c(err error) {
+	if err != nil {
 		panic(err)
-	***REMOVED***
+	}
 
-***REMOVED***
+}

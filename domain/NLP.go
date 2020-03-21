@@ -1,12 +1,12 @@
 package domain
 
-type SpeechRequest struct ***REMOVED***
+type SpeechRequest struct {
 	Text         string
 	LanguageCode string
 	SsmlGender   string
 	VoiceName    string
-***REMOVED***
+}
 
-type SpeechExampleError struct ***REMOVED***
+type SpeechExampleError struct {
 	Message string
-***REMOVED***
+}
