@@ -21,7 +21,7 @@ func ServeLogin(w http.ResponseWriter, r *http.Request) {
 		AuthToken: "",
 		Content:   "<html><p>Hello</p></html>",
 	}
-	t, err := template.ParseFiles("templates/login.html")
+	t, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,83 +31,103 @@ func ServeLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServeScriptListView(w http.ResponseWriter, r *http.Request) {
-	page := domain.ListPage{
-		Title: "Diaverse Script View",
-		ScriptList: []domain.TestScript{
-			domain.TestScript{
-				Cases: []domain.TestCase{
-					domain.TestCase{
-						Responses:      []string{"Hello, how are you"},
-						ExpectedOutput: []string{"I am fine"},
-					},
-					domain.TestCase{
-						Responses:      []string{"what are you doing?"},
-						ExpectedOutput: []string{"absolutely nothing."},
-					},
-				},
-				Result: true,
-			},
-			domain.TestScript{
-				Cases:  []domain.TestCase{},
-				Result: true,
-			},
-		},
-		SelectedScript: "Script One",
-	}
+	//page := domain.ListPage{
+	//	Title: "Diaverse Script View",
+	//	ScriptList: []domain.TestScript{
+	//		domain.TestScript{
+	//			Cases: []domain.TestCase{
+	//				domain.TestCase{
+	//					Responses:      []string{"Hello, how are you"},
+	//					ExpectedOutput: []string{"I am fine"},
+	//				},
+	//				domain.TestCase{
+	//					Responses:      []string{"what are you doing?"},
+	//					ExpectedOutput: []string{"absolutely nothing."},
+	//				},
+	//			},
+	//			Result: true,
+	//		},
+	//		domain.TestScript{
+	//			Cases:  []domain.TestCase{},
+	//			Result: true,
+	//		},
+	//	},
+	//	SelectedScript: "Script One",
+	//}
 
-	t, err := template.ParseFiles("templates/ScriptList.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//parse the login template and serve
-	t.Execute(w, page)
+	//t, err := template.ParseFiles("templates/ScriptList.html")
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	////parse the login template and serve
+	//t.Execute(w, page)
 }
 
-func ExecuteTestScript(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+var scriptInProgress struct {
+	sync.RWMutex
+	bool
+}
 
-	scriptJSON, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Error("Cannot read json body of requested test script")
-		w.Write([]byte("Cannot read json body of requested test script"))
-		r.Body.Close()
-		return
-	}
+func InitilizeStructs() {
+	scriptInProgress.bool = false
+}
 
-	testScript := domain.TestScript{}
-	err = json.Unmarshal(scriptJSON, &testScript)
-	if err != nil {
-		log.Error("Could not unmarshal test script json")
-		r.Body.Close()
-		w.Write([]byte("Could not unmarshal test script json"))
-	}
+func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
+	scriptInProgress.Lock()
+	curState := scriptInProgress.bool
+	scriptInProgress.Unlock()
 
-	//caseResults := make([]bool, len(testScript.Cases))
-	for _, e := range testScript.Cases {
+	if !curState {
+		scriptInProgress.Lock()
+		scriptInProgress.bool = true
+		scriptInProgress.Unlock()
 
-		//generate all required TTS
-		for j, k := range e.Responses {
+		defer r.Body.Close()
+		log.Info("Got test script")
 
-			//the test hardware always speaks first.
-			service.SpeakAloud(k)
-
-			//try and listen three times before we continue
-			for n := 0; n < 2; n++ {
-				resp, conf, err := service.Recognize()
-				if err != nil {
-					log.Fatal("Failed to begin recognition")
-				}
-
-				if conf >= 0.8 {
-					if service.TranscriptionConfidence(resp, e.ExpectedOutput[j]) >= 0.8 {
-						//only continue until we have both an ASR confidence and NLU confidence of 80% or more.
-						break
-					}
-				} else {
-					service.SpeakAloud(k)
-				}
-			}
+		scriptJSON, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Error("Cannot read json body of requested test script")
+			w.Write([]byte("Cannot read json body of requested test script"))
+			r.Body.Close()
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
+			return
 		}
+
+		script := domain.TestScript{}
+		e := json.Unmarshal(scriptJSON, &script)
+		if e != nil {
+
+			w.Write([]byte("Invalid Script format."))
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
+			return
+		}
+
+		scriptError := ExecuteTestScript(&script)
+		if scriptError != nil {
+			w.Write([]byte("Error executing test script, view service logs for additional information."))
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
+			return
+		} else {
+			j, e := json.Marshal(script)
+			if e != nil {
+				log.Fatal("cannot create result JSON for current test, fatal")
+			}
+
+			w.Write(j)
+		}
+	} else {
+		w.Write([]byte("Test script already in progress, resend script after current script completes, or cancel current script."))
 	}
+}
+
+func RegisterHardware(w http.ResponseWriter, r *http.Request) {
+
 }

@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/wav"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 	"io/ioutil"
 	"log"
@@ -134,7 +134,7 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	//create and return the request
 	return texttospeechpb.SynthesizeSpeechRequest{
 		AudioConfig: &texttospeechpb.AudioConfig{
-			AudioEncoding: texttospeechpb.AudioEncoding_MP3,
+			AudioEncoding: texttospeechpb.AudioEncoding_LINEAR16,
 		},
 
 		Voice: &texttospeechpb.VoiceSelectionParams{
@@ -151,20 +151,26 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 func SpeakAloud(text string) {
 
 	if !CheckForFile("/audio/" + text) {
-		SpeechRequest{
+		req := SpeechRequest{
 			Text:         text,
 			LanguageCode: "en-US",
 			SsmlGender:   "FEMALE",
 			VoiceName:    "en-us-Wavenet-C",
-		}.SpeakToFile("audio/" + text + ".mp3")
+		}
+		log.Println("Attempting to write to file, dir = audio/" + text + ".wav")
+		req.SpeakToFile("/home/pi/Hardware/audio/" + text + ".wav")
 	}
-
-	f, err := os.Open("audio/" + text)
+	log.Println("opening file")
+	f, err := os.Open("/home/pi/Hardware/audio/" + text + ".wav")
 	if err != nil {
+		log.Println(err)
 		log.Fatal("Could not complete required audio I/O.")
 	}
-	streamer, format, err := mp3.Decode(f)
+
+	streamer, format, err := wav.Decode(f)
 	if err != nil {
+		log.Println(format)
+		log.Println(err)
 		log.Fatal("Could not construct streamer from decoded input file")
 	}
 
@@ -224,29 +230,33 @@ func TranscriptionConfidence(transcription string, exact string) float64 {
 func Recognize() (string, float64, error) {
 
 	//First we need to craft the command we want to execute
-	cmdName := "SpeechToTextExamples/scripts/recognize"
-	cmdArgs := []string{""}
+	cmdName := "/home/pi/Hardware/service/recognize"
+	cmdArgs := []string{}
 	cmd := exec.Command(cmdName, cmdArgs...)
-	//We need to create a reader for the stdout of this script
-	cmdReader, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println("Error creating StdoutPipe for Cmd", err)
-		os.Exit(1)
-	}
 
 	//If we want to return the values that are returned from the above script
 	//we need to declare the return values at a higher scope
 	transcription := ""
 	confidence := 0.0
 
-	//A scanner is created to read the stdout of the above command
-	scanner := bufio.NewScanner(cmdReader)
+	stderr, err := cmd.StderrPipe() //Stderr for whatever reason.
 
-	//A new go thread is created to handle the audio streaming and subsequent response bodies
+	//We need to start our goroutine from the main thread
+	fmt.Println("STARTING.")
+	err = cmd.Start()
+	if err != nil {
+		fmt.Println("Error starting Cmd", err)
+		os.Exit(1)
+	}
+
 	go func() {
-		for scanner.Scan() {
+		//We need to create a reader for the stdout of this script
+		//A scanner is created to read the stdout of the above command
+		scanner := bufio.NewScanner(stderr)
 
-			fmt.Println("Response Recognized...")
+		for scanner.Scan() {
+			fmt.Println("Response Recognized ON STD OUT...")
+			fmt.Println(scanner.Text())
 			//A Third party can interrupt this streaming process by simply saying "stop"
 			//useful when you want to stop the test, but don't want orphan processes
 			if strings.Contains(scanner.Text(), "stop") {
@@ -274,8 +284,8 @@ func Recognize() (string, float64, error) {
 				}
 
 				//Now that we have our transcription we can stop the recognition process
-				if err := cmd.Process.Kill(); err != nil {
-					log.Fatal("failed to kill process: ", err)
+				if err := cmd.Process.Signal(os.Kill); err != nil {
+					log.Println(cmd.ProcessState.String())
 				}
 			}
 		}
@@ -293,10 +303,10 @@ func Recognize() (string, float64, error) {
 	var out bytes.Buffer
 	if err != nil && transcription == "" {
 		fmt.Println("Recognition crash")
-		fmt.Println("tried to run the command : ./scripts/recognize")
 		fmt.Println(fmt.Sprint(err) + ": " + out.String())
 		return transcription, confidence, err
 	}
+	fmt.Println(cmd.ProcessState.String())
 	return transcription, confidence, nil
 }
 
