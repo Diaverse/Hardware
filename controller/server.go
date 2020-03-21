@@ -14,72 +14,72 @@ import (
 //This is the server controller. It contains all server handlers.
 
 //ServeLogin listens on the root directory of the hosted web page and serves the needed html to the user
-func ServeLogin(w http.ResponseWriter, r *http.Request) ***REMOVED***
+func ServeLogin(w http.ResponseWriter, r *http.Request) {
 	//todo; define a way for a user to remain logged in across sessions
 	//create a new login page struct
-	page := domain.LoginPage***REMOVED***
+	page := domain.LoginPage{
 		Title:     "Diaverse Login Screen",
 		AuthToken: "",
 		Content:   "<html><p>Hello</p></html>",
-	***REMOVED***
-	t, err := template.ParseFiles("templates/login.html")
-	if err != nil ***REMOVED***
+	}
+	t, err := template.ParseFiles("templates/index.html")
+	if err != nil {
 		log.Fatal(err)
-	***REMOVED***
+	}
 
 	//parse the login template and serve
 	t.Execute(w, page)
-***REMOVED***
+}
 
-func ServeScriptListView(w http.ResponseWriter, r *http.Request) ***REMOVED***
-	//page := domain.ListPage***REMOVED***
+func ServeScriptListView(w http.ResponseWriter, r *http.Request) {
+	//page := domain.ListPage{
 	//	Title: "Diaverse Script View",
-	//	ScriptList: []domain.TestScript***REMOVED***
-	//		domain.TestScript***REMOVED***
-	//			Cases: []domain.TestCase***REMOVED***
-	//				domain.TestCase***REMOVED***
-	//					Responses:      []string***REMOVED***"Hello, how are you"***REMOVED***,
-	//					ExpectedOutput: []string***REMOVED***"I am fine"***REMOVED***,
-	//				***REMOVED***,
-	//				domain.TestCase***REMOVED***
-	//					Responses:      []string***REMOVED***"what are you doing?"***REMOVED***,
-	//					ExpectedOutput: []string***REMOVED***"absolutely nothing."***REMOVED***,
-	//				***REMOVED***,
-	//			***REMOVED***,
+	//	ScriptList: []domain.TestScript{
+	//		domain.TestScript{
+	//			Cases: []domain.TestCase{
+	//				domain.TestCase{
+	//					Responses:      []string{"Hello, how are you"},
+	//					ExpectedOutput: []string{"I am fine"},
+	//				},
+	//				domain.TestCase{
+	//					Responses:      []string{"what are you doing?"},
+	//					ExpectedOutput: []string{"absolutely nothing."},
+	//				},
+	//			},
 	//			Result: true,
-	//		***REMOVED***,
-	//		domain.TestScript***REMOVED***
-	//			Cases:  []domain.TestCase***REMOVED******REMOVED***,
+	//		},
+	//		domain.TestScript{
+	//			Cases:  []domain.TestCase{},
 	//			Result: true,
-	//		***REMOVED***,
-	//	***REMOVED***,
+	//		},
+	//	},
 	//	SelectedScript: "Script One",
-	//***REMOVED***
+	//}
 
 	//t, err := template.ParseFiles("templates/ScriptList.html")
-	//if err != nil ***REMOVED***
+	//if err != nil {
 	//	log.Fatal(err)
-	//***REMOVED***
+	//}
 	//
 	////parse the login template and serve
 	//t.Execute(w, page)
-***REMOVED***
+}
 
-var scriptInProgress struct ***REMOVED***
+var scriptInProgress struct {
 	sync.RWMutex
 	bool
-***REMOVED***
+}
 
-func InitilizeStructs() ***REMOVED***
+func InitilizeStructs() {
 	scriptInProgress.bool = false
-***REMOVED***
+}
 
-func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) ***REMOVED***
+func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 	scriptInProgress.Lock()
 	curState := scriptInProgress.bool
 	scriptInProgress.Unlock()
 
-	if !curState ***REMOVED***
+	if !curState {
 		scriptInProgress.Lock()
 		scriptInProgress.bool = true
 		scriptInProgress.Unlock()
@@ -88,7 +88,7 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) ***REMOVED
 		log.Info("Got test script")
 
 		scriptJSON, err := ioutil.ReadAll(r.Body)
-		if err != nil ***REMOVED***
+		if err != nil {
 			log.Error("Cannot read json body of requested test script")
 			w.Write([]byte("Cannot read json body of requested test script"))
 			r.Body.Close()
@@ -96,47 +96,39 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) ***REMOVED
 			scriptInProgress.bool = false
 			scriptInProgress.Unlock()
 			return
-		***REMOVED***
+		}
 
-		script := domain.TestScript***REMOVED******REMOVED***
+		script := domain.TestScript{}
 		e := json.Unmarshal(scriptJSON, &script)
-		if e != nil ***REMOVED***
+		if e != nil {
 
 			w.Write([]byte("Invalid Script format."))
 			scriptInProgress.Lock()
 			scriptInProgress.bool = false
 			scriptInProgress.Unlock()
 			return
-		***REMOVED***
+		}
 
 		scriptError := ExecuteTestScript(&script)
-		if scriptError != nil ***REMOVED***
-
+		if scriptError != nil {
 			w.Write([]byte("Error executing test script, view service logs for additional information."))
 			scriptInProgress.Lock()
 			scriptInProgress.bool = false
 			scriptInProgress.Unlock()
 			return
-		***REMOVED*** else ***REMOVED***
-			if script.Result == true ***REMOVED***
-				w.Write([]byte("Test script completed successfully!"))
-				scriptInProgress.Lock()
-				scriptInProgress.bool = false
-				scriptInProgress.Unlock()
-				return
-			***REMOVED*** else ***REMOVED***
-				w.Write([]byte("Test script failed. Check service logs for more information."))
-				scriptInProgress.Lock()
-				scriptInProgress.bool = false
-				scriptInProgress.Unlock()
-				return
-			***REMOVED***
-		***REMOVED***
-	***REMOVED*** else ***REMOVED***
+		} else {
+			j, e := json.Marshal(script)
+			if e != nil {
+				log.Fatal("cannot create result JSON for current test, fatal")
+			}
+
+			w.Write(j)
+		}
+	} else {
 		w.Write([]byte("Test script already in progress, resend script after current script completes, or cancel current script."))
-	***REMOVED***
-***REMOVED***
+	}
+}
 
-func RegisterHardware(w http.ResponseWriter, r *http.Request) ***REMOVED***
+func RegisterHardware(w http.ResponseWriter, r *http.Request) {
 
-***REMOVED***
+}

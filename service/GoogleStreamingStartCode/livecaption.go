@@ -24,79 +24,79 @@ import (
 //
 //    $ gst-launch-1.0 -v pulsesrc ! audioconvert ! audioresample ! audio/x-raw,channels=1,rate=16000 ! filesink location=/dev/stdout | livecaption
 
-func main() ***REMOVED***
+func main() {
 	ctx := context.Background()
 
 	client, err := speech.NewClient(ctx)
-	if err != nil ***REMOVED***
+	if err != nil {
 		log.Fatal(err)
-	***REMOVED***
+	}
 	stream, err := client.StreamingRecognize(ctx)
-	if err != nil ***REMOVED***
+	if err != nil {
 		log.Fatal(err)
-	***REMOVED***
+	}
 	// Send the initial configuration message.
-	if err := stream.Send(&speechpb.StreamingRecognizeRequest***REMOVED***
-		StreamingRequest: &speechpb.StreamingRecognizeRequest_StreamingConfig***REMOVED***
-			StreamingConfig: &speechpb.StreamingRecognitionConfig***REMOVED***
-				Config: &speechpb.RecognitionConfig***REMOVED***
+	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
+		StreamingRequest: &speechpb.StreamingRecognizeRequest_StreamingConfig{
+			StreamingConfig: &speechpb.StreamingRecognitionConfig{
+				Config: &speechpb.RecognitionConfig{
 					Encoding:        speechpb.RecognitionConfig_LINEAR16,
 					SampleRateHertz: 16000,
 					LanguageCode:    "en-US",
-				***REMOVED***,
-			***REMOVED***,
-		***REMOVED***,
-	***REMOVED***); err != nil ***REMOVED***
+				},
+			},
+		},
+	}); err != nil {
 		log.Fatal(err)
-	***REMOVED***
+	}
 
-	go func() ***REMOVED***
+	go func() {
 		// Pipe stdin to the API.
 		buf := make([]byte, 1024)
-		for ***REMOVED***
+		for {
 			n, err := os.Stdin.Read(buf)
-			if n > 0 ***REMOVED***
-				if err := stream.Send(&speechpb.StreamingRecognizeRequest***REMOVED***
-					StreamingRequest: &speechpb.StreamingRecognizeRequest_AudioContent***REMOVED***
+			if n > 0 {
+				if err := stream.Send(&speechpb.StreamingRecognizeRequest{
+					StreamingRequest: &speechpb.StreamingRecognizeRequest_AudioContent{
 						AudioContent: buf[:n],
-					***REMOVED***,
-				***REMOVED***); err != nil ***REMOVED***
+					},
+				}); err != nil {
 					log.Printf("Could not send audio: %v", err)
-				***REMOVED***
-			***REMOVED***
-			if err == io.EOF ***REMOVED***
+				}
+			}
+			if err == io.EOF {
 				// Nothing else to pipe, close the stream.
-				if err := stream.CloseSend(); err != nil ***REMOVED***
+				if err := stream.CloseSend(); err != nil {
 					log.Fatalf("Could not close stream: %v", err)
-				***REMOVED***
+				}
 				return
-			***REMOVED***
-			if err != nil ***REMOVED***
+			}
+			if err != nil {
 				log.Printf("Could not read from stdin: %v", err)
 				continue
-			***REMOVED***
-		***REMOVED***
-	***REMOVED***()
+			}
+		}
+	}()
 
-	for ***REMOVED***
+	for {
 		resp, err := stream.Recv()
-		if err == io.EOF ***REMOVED***
+		if err == io.EOF {
 			break
-		***REMOVED***
-		if err != nil ***REMOVED***
+		}
+		if err != nil {
 			log.Fatalf("Cannot stream results: %v", err)
-		***REMOVED***
-		if err := resp.Error; err != nil ***REMOVED***
+		}
+		if err := resp.Error; err != nil {
 			// Workaround while the API doesn't give a more informative error.
-			if err.Code == 3 || err.Code == 11 ***REMOVED***
+			if err.Code == 3 || err.Code == 11 {
 				log.Print("WARNING: Speech recognition request exceeded limit of 60 seconds.")
-			***REMOVED***
+			}
 			log.Fatalf("Could not recognize: %v", err)
-		***REMOVED***
-		for _, result := range resp.Results ***REMOVED***
+		}
+		for _, result := range resp.Results {
 			log.Printf("%+v\n", result)
 
-		***REMOVED***
+		}
 
-	***REMOVED***
-***REMOVED***
+	}
+}

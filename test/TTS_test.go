@@ -14,53 +14,53 @@ import (
 //TestCredentials ensures that the user has supplied the required credential file.
 //Future Implementations of this test would ensure that the files supplied are valid GCP API service account keys,
 //but this MVP will expect anyone using the system to understand how to manage API keys.
-func TestCredentials(t *testing.T) ***REMOVED***
+func TestCredentials(t *testing.T) {
 	files, err := ioutil.ReadDir("../credentials")
-	if err != nil ***REMOVED***
+	if err != nil {
 		log.Fatal(err)
-	***REMOVED***
+	}
 
 	jsonFileFound := false
 
-	for _, e := range files ***REMOVED***
-		if strings.Contains(e.Name(), ".json") ***REMOVED***
+	for _, e := range files {
+		if strings.Contains(e.Name(), ".json") {
 			jsonFileFound = true
-		***REMOVED***
-	***REMOVED***
+		}
+	}
 
-	if !jsonFileFound ***REMOVED***
+	if !jsonFileFound {
 		fmt.Println("ERROR - could not find credentials file with proper naming conventions. Ensure your GCP API keys are placed  within the credentials directory and  end in '.json'.")
 		t.FailNow()
-	***REMOVED***
+	}
 	log.Println("Credentials Are Valid PASSED")
-***REMOVED***
+}
 
 //TestPlainTextTTSGeneration is a function which makes a text to speech request to the GCP API and
 //specifies that the request be plain text, and not SSML.
-func TestPlainTextTTSGeneration(t *testing.T) ***REMOVED***
+func TestPlainTextTTSGeneration(t *testing.T) {
 
-	r := service.SpeechRequest***REMOVED***
+	r := service.SpeechRequest{
 		Text:         "Please Wait For Unit Tests",
 		LanguageCode: "en-US",
 		SsmlGender:   "FEMALE",
 		VoiceName:    "en-us-Wavenet-C",
-	***REMOVED***
+	}
 
 	r.SpeakToFile("../audio/Please Wait For Unit Tests.wav")
-	if !service.CheckForAudioFile("Please Wait For Unit Tests.wav") ***REMOVED***
+	if !service.CheckForAudioFile("Please Wait For Unit Tests.wav") {
 		fmt.Println("Could not find audio file.")
 		t.FailNow()
-	***REMOVED***
+	}
 	fmt.Println("Plain Text TTS Unit Tests PASSED")
-***REMOVED***
+}
 
 //TestSsmlTTSGeneration is a function which makes a text to speech request to the GCP API and
 //specifies that the request be plain text, and not SSML.
-//func TestSsmlTTSGeneration(t *testing.T) ***REMOVED***
+//func TestSsmlTTSGeneration(t *testing.T) {
 //	service.SpeakAloud("<speak><prosody  pitch=\"-20%\" range=\"low\" rate =\"50%\" volume =\"30\"><emphasis level=\"strong\">Almost done</emphasis></prosody></speak>")
 //	_, e := os.Stat("Almost done.wav")
-//	if e != nil ***REMOVED***
+//	if e != nil {
 //		log.Println("Could not generate audio file for TTS unit test")
 //		t.FailNow()
-//	***REMOVED***
-//***REMOVED***
+//	}
+//}
