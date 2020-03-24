@@ -2,7 +2,11 @@ package controller
 
 import (
 	"../domain"
-	service "../service"
+	"fmt"
+	"net/url"
+	"strings"
+	"sync"
+
 	"encoding/json"
 	"github.com/prometheus/common/log"
 	"html/template"
@@ -11,57 +15,159 @@ import (
 )
 
 //This is the server controller. It contains all server handlers.
+const checkForExsistingHardwareTokenURL = "http://ec2-54-82-98-123.compute-1.amazonaws.com/CheckForExistingHardwareToken"
+const getScriptsByHardwareTokenURL = "http://ec2-54-82-98-123.compute-1.amazonaws.com/GetScriptsByHardwareToken"
 
-//ServeLogin listens on the root directory of the hosted web page and serves the needed html to the user
-func ServeLogin(w http.ResponseWriter, r *http.Request) {
+//ServeWebpage listens on the root directory of the hosted web page and serves the needed html to the user
+func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 	//todo; define a way for a user to remain logged in across sessions
 	//create a new login page struct
-	page := domain.LoginPage{
-		Title:     "Diaverse Login Screen",
-		AuthToken: "",
-		Content:   "<html><p>Hello</p></html>",
-	}
-	t, err := template.ParseFiles("templates/index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
+	r.ParseForm()
 
-	//parse the login template and serve
-	t.Execute(w, page)
+	if r.Method == http.MethodGet && r.FormValue("loginUsr") != "" {
+
+		u := r.FormValue("loginUsr")
+		hw := r.FormValue("loginPass")
+
+		form := url.Values{
+			"username": {u},
+			"hwtoken":  {hw},
+		}
+
+		resp, err := http.PostForm(checkForExsistingHardwareTokenURL, form)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if resp.StatusCode != 202 {
+			log.Info("Detected Invalid Login Attempt via Hardware UI ")
+		} else {
+			log.Info(r.FormValue("loginUsr") + " Has Logged On.")
+		}
+
+		form = url.Values{
+			"hardwareToken": {hw},
+		}
+		//get scripts
+		resp, err = http.PostForm(getScriptsByHardwareTokenURL, form)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Info(resp.StatusCode)
+
+		s := []domain.TestScript{}
+		c, e := ioutil.ReadAll(resp.Body)
+		if e != nil {
+			log.Info(string(c))
+			log.Fatal(e)
+		}
+		log.Warn(string(c))
+		e = json.Unmarshal(c, &s)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+		fmt.Println(s)
+		//sample data
+		sampleScripts := []domain.TestScript{
+			domain.TestScript{
+				TestCases: []domain.TestCase{
+					domain.TestCase{
+						HardwareOutput: []string{"Test Case one"},
+						HardwareInput:  []string{"two"},
+						Result:         0,
+						TotalPassed:    0,
+						TotalFailed:    0,
+					},
+					domain.TestCase{
+						HardwareOutput: []string{"Test Case Two"},
+						HardwareInput:  []string{"two"},
+						Result:         0,
+						TotalPassed:    0,
+						TotalFailed:    0,
+					},
+					domain.TestCase{
+						HardwareOutput: []string{"Test Case three"},
+						HardwareInput:  []string{"two"},
+						Result:         0,
+						TotalPassed:    0,
+						TotalFailed:    0,
+					},
+				},
+				PassPercent: 0,
+			},
+			domain.TestScript{
+				TestCases: []domain.TestCase{
+					domain.TestCase{
+						HardwareOutput: []string{"Test Case one"},
+						HardwareInput:  []string{"two"},
+						Result:         0,
+						TotalPassed:    0,
+						TotalFailed:    0,
+					},
+					domain.TestCase{
+						HardwareOutput: []string{"Test Case Two"},
+						HardwareInput:  []string{"two"},
+						Result:         0,
+						TotalPassed:    0,
+						TotalFailed:    0,
+					},
+					domain.TestCase{
+						HardwareOutput: []string{"Test Case three"},
+						HardwareInput:  []string{"two"},
+						Result:         0,
+						TotalPassed:    0,
+						TotalFailed:    0,
+					},
+				},
+				PassPercent: 0,
+			},
+		}
+
+		//process template
+		page := domain.WebPage{
+			Title:     "Diaverse Login Screen",
+			AuthToken: "",
+			Scripts:   sampleScripts,
+			Loggedin:  true,
+		}
+
+		t, err := template.ParseFiles("templates/login.html")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//parse the login template and serve
+		e = t.Execute(w, page)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+	} else {
+		//login screen
+		page := domain.WebPage{
+			Title:     "Diaverse Login Screen",
+			AuthToken: "",
+			Loggedin:  false,
+		}
+
+		t, err := template.ParseFiles("templates/login.html")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//parse the login template and serve
+		e := t.Execute(w, page)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+	}
 }
 
-func ServeScriptListView(w http.ResponseWriter, r *http.Request) {
-	//page := domain.ListPage{
-	//	Title: "Diaverse Script View",
-	//	ScriptList: []domain.TestScript{
-	//		domain.TestScript{
-	//			Cases: []domain.TestCase{
-	//				domain.TestCase{
-	//					Responses:      []string{"Hello, how are you"},
-	//					ExpectedOutput: []string{"I am fine"},
-	//				},
-	//				domain.TestCase{
-	//					Responses:      []string{"what are you doing?"},
-	//					ExpectedOutput: []string{"absolutely nothing."},
-	//				},
-	//			},
-	//			Result: true,
-	//		},
-	//		domain.TestScript{
-	//			Cases:  []domain.TestCase{},
-	//			Result: true,
-	//		},
-	//	},
-	//	SelectedScript: "Script One",
-	//}
+func ServeUsersPage(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
 
-	//t, err := template.ParseFiles("templates/ScriptList.html")
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	////parse the login template and serve
-	//t.Execute(w, page)
 }
 
 var scriptInProgress struct {
@@ -120,7 +226,7 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 			if e != nil {
 				log.Fatal("cannot create result JSON for current test, fatal")
 			}
-
+			fmt.Println(string(j))
 			w.Write(j)
 		}
 	} else {
@@ -129,5 +235,35 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterHardware(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func CheckForExsistingHardwareToken(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
+	token := r.FormValue("hardwareToken")
+	if token == "" {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, checkForExsistingHardwareTokenURL, strings.NewReader(token))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Info(resp.StatusCode)
+
+	type ServerResp struct {
+		user          string
+		hardwareToken string
+	}
+}
+
+func AuthorizeToken(token string) {
 
 }
