@@ -2,12 +2,12 @@ package controller
 
 import (
 	"../domain"
-	service "../service"
 	"encoding/json"
 	"github.com/prometheus/common/log"
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
 
 //This is the server controller. It contains all server handlers.
