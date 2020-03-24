@@ -3,6 +3,8 @@ package controller
 import (
 	"../domain"
 	"../service"
+	"encoding/json"
+	"fmt"
 	"github.com/prometheus/common/log"
 	"time"
 )
@@ -11,7 +13,8 @@ import (
 
 func ExecuteTestScript(script *domain.TestScript) error {
 
-	for l, e := range script.TestCases {
+	for _, e := range script.TestCases {
+		testCaseResults := make(map[int]bool)
 		for i := 0; i < len(e.HardwareInput); i++ {
 			time.Sleep(2 * time.Second) //Any VUI will have some amount of processing time, this value is temporary. We have a technical requirement for this pause as well, as the audio device cannot open and close as fast as this loop
 			service.SpeakAloud(e.HardwareOutput[i])
@@ -22,25 +25,41 @@ func ExecuteTestScript(script *domain.TestScript) error {
 			}
 
 			log.Infof("Recognized Response: %s | Confidence of %f", response, confidence)
-
-			if service.TranscriptionConfidence(response, e.HardwareInput[i]) >= .60 {
-				log.Infof("Response %d for Test Case %d PASSED", i, l)
+			if response == e.HardwareInput[i] {
+				testCaseResults[i] = true
 				e.TotalPassed++
 			} else {
-				log.Infof("Response %d for Test Case %d FAILED", i, l)
+				testCaseResults[i] = false
 				e.TotalFailed++
 			}
 		}
-		e.Result = float64(e.TotalPassed/e.TotalFailed + e.TotalPassed)
+		tpass := 0
+		tfail := 0
+		for _, v := range testCaseResults {
+			if v {
+				tpass++
+			} else {
+				tfail++
+			}
+		}
+		fmt.Println(tpass)
+		fmt.Println(tfail)
+		fmt.Println(testCaseResults)
+		if float64(tfail+tpass) != 0 {
+			e.Result = float64(tpass) / float64(tfail+tpass)
+		} else {
+			fmt.Println("Almost divided by zero")
+		}
 	}
 
-	TotalResult := 0.
-	//process results.
+	tpercent := 0.
+
 	for _, e := range script.TestCases {
-		TotalResult += e.Result
+		tpercent += e.Result
 	}
 
-	TotalResult = TotalResult / float64(len(script.TestCases))
-
+	script.PassPercent = tpercent / float64(len(script.TestCases))
+	j, _ := json.Marshal(script)
+	fmt.Println(string(j))
 	return nil
 }

@@ -14,12 +14,13 @@ func main() {
 
 func StartServer() {
 	mux := http.DefaultServeMux
-	fs := http.FileServer(http.Dir("./templates"))
-	mux.Handle("/", fs)
 
-	mux.HandleFunc("/listScripts", controller.ServeScriptListView)
+	mux.HandleFunc("/", controller.ServeWebpage)
+	mux.HandleFunc("/user", controller.ServeWebpage)
 	mux.HandleFunc("/register", controller.RegisterHardware)
 	mux.HandleFunc("/executeScript", controller.ExecuteTestScriptHandler)
+	mux.HandleFunc("/authenticateToken", controller.CheckForExsistingHardwareToken)
+
 	controller.InitilizeStructs()
 	log.Info("Starting server on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))

@@ -63,9 +63,10 @@ func (st *SpeechRequest) SpeakToFile(outputFile string) {
 	//Write the contents of the response body to a file
 
 	err = ioutil.WriteFile(outputFile, resp.AudioContent, 0644)
+	log.Println(err)
 	checkErr(err)
 
-	fmt.Printf("TTS Successfully written to %s", outputFile)
+	fmt.Printf("TTS Successfully written to %s\n\n", outputFile)
 }
 
 func (pt *SpeechRequest) SpeakFromFileToFile(inputFile string, outputFile string) {
@@ -134,7 +135,15 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	//create and return the request
 	return texttospeechpb.SynthesizeSpeechRequest{
 		AudioConfig: &texttospeechpb.AudioConfig{
-			AudioEncoding: texttospeechpb.AudioEncoding_LINEAR16,
+			AudioEncoding:        texttospeechpb.AudioEncoding_LINEAR16,
+			SpeakingRate:         0,
+			Pitch:                0,
+			VolumeGainDb:         0,
+			SampleRateHertz:      16000,
+			EffectsProfileId:     nil,
+			XXX_NoUnkeyedLiteral: struct{}{},
+			XXX_unrecognized:     nil,
+			XXX_sizecache:        0,
 		},
 
 		Voice: &texttospeechpb.VoiceSelectionParams{
@@ -148,20 +157,24 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 
 }
 
-func SpeakAloud(text string) {
+//SpeakAloud is a function which accepts a string of text as its only parameter, it then matches that text
+//to a file name within our audio store. If i cannot find the audio file it generates it and stores it.
+func SpeakAloud(text string) bool {
 
-	if !CheckForFile("/audio/" + text) {
+	if !CheckForFile("audio/" + text) {
 		req := SpeechRequest{
 			Text:         text,
 			LanguageCode: "en-US",
 			SsmlGender:   "FEMALE",
 			VoiceName:    "en-us-Wavenet-C",
 		}
-		log.Println("Attempting to write to file, dir = audio/" + text + ".wav")
-		req.SpeakToFile("/home/pi/Hardware/audio/" + text + ".wav")
+
+		log.Println("Attempting to write to file, dir = audio/\"" + text + "\".wav")
+		req.SpeakToFile("/home/pi/Hardware/audio/\"" + text + "\".wav")
+
 	}
-	log.Println("opening file")
-	f, err := os.Open("/home/pi/Hardware/audio/" + text + ".wav")
+
+	f, err := os.Open("/home/pi/Hardware/audio/\"" + text + "\".wav")
 	if err != nil {
 		log.Println(err)
 		log.Fatal("Could not complete required audio I/O.")
@@ -169,22 +182,64 @@ func SpeakAloud(text string) {
 
 	streamer, format, err := wav.Decode(f)
 	if err != nil {
-		log.Println(format)
 		log.Println(err)
-		log.Fatal("Could not construct streamer from decoded input file")
+		return false
 	}
 
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	defer streamer.Close()
+
+	//start the speaker, specify the files sample rate and the buffer size. larger the buffer the better the stability, the smaller the lower the latency.
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second*2/3))
+	speaker.Play(streamer)
+	log.Println("Beginning To speak. \n\n")
+
 	done := make(chan bool)
-	speaker.Play(streamer, beep.Callback(func() {
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
 		done <- true
-	}))
+	})))
 
-	//wait for the file to stop playing
 	<-done
+	log.Println("Finished Speaking.")
+	return true
+}
 
-	//must be called.
-	streamer.Close()
+func SpeakAloudWithChan(text string, done chan bool) {
+
+	if !CheckForFile("audio/" + text) {
+		req := SpeechRequest{
+			Text:         text,
+			LanguageCode: "en-US",
+			SsmlGender:   "FEMALE",
+			VoiceName:    "en-us-Wavenet-C",
+		}
+
+		log.Println("Attempting to write to file, dir = audio/\"" + text + "\".wav")
+		req.SpeakToFile("/home/pi/Hardware/audio/\"" + text + "\".wav")
+
+	}
+
+	f, err := os.Open("/home/pi/Hardware/audio/\"" + text + "\".wav")
+	if err != nil {
+		log.Println(err)
+		log.Fatal("Could not complete required audio I/O.")
+	}
+
+	streamer, format, err := wav.Decode(f)
+	if err != nil {
+		log.Println(err)
+	}
+
+	defer streamer.Close()
+
+	//start the speaker, specify the files sample rate and the buffer size. larger the buffer the better the stability, the smaller the lower the latency.
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second*2/3))
+	speaker.Play(streamer)
+	log.Println("Beginning To speak. \n\n")
+
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
+		done <- true
+	})))
+
 }
 
 //short hand for quick error checks
@@ -290,13 +345,6 @@ func Recognize() (string, float64, error) {
 			}
 		}
 	}()
-
-	//We need to start our goroutine from the main thread
-	err = cmd.Start()
-	if err != nil {
-		fmt.Println("Error starting Cmd", err)
-		os.Exit(1)
-	}
 
 	//We need to wait for a transcription before we can return said transcription
 	err = cmd.Wait()
