@@ -5,7 +5,6 @@ import (
 	"../service"
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/common/log"
 )
 
 //ExecuteTestScript is the function which executes the core logic of the project, it utilizes the code within service directory of the project to do the required audio I/O.
@@ -29,22 +28,18 @@ func ExecuteTestScript(script *domain.TestScript) error {
 		service.PrepareAudioFiles(e.HardwareOutput)
 		for i := 0; i < len(e.HardwareInput); i++ {
 			service.SpeakAloud(e.HardwareOutput[i])
-			response, confidence, err := service.Recognize()
+			response, _, err := service.Recognize()
 			if err != nil {
 				return err
 			}
 
-			log.Infof("Recognized Response: %s | Confidence of %f", response, confidence)
-			transcriptionConf := service.TranscriptionConfidence(response, e.HardwareInput[i])
-			log.Infof("---> %f <-----", transcriptionConf)
-			if transcriptionConf > .7 {
+			if response == e.HardwareInput[i] {
 				testCaseResults[i] = true
 				e.TotalPassed++
 			} else {
 				testCaseResults[i] = false
 				e.TotalFailed++
 			}
-
 		}
 
 		tpass := 0

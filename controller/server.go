@@ -125,15 +125,20 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 
 		scriptsContents := make(map[int]string)
 		i := 0
+
 		for range s {
 			i++
 		}
+
 		scripts := make([]domain.TestScript, i)
 		i = 0
+
 		for _, v := range s {
 			scriptsContents[v.ScriptID] = v.Script
 			scrp := domain.TestScript{}
 			e = json.Unmarshal([]byte(v.Script), &scrp)
+			j, _ := json.Marshal(scrp)
+			currentWebPage.ScriptsJSON = append(currentWebPage.ScriptsJSON, j)
 			scripts[i] = scrp
 		}
 
