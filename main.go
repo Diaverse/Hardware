@@ -14,9 +14,9 @@ func main() {
 
 func StartServer() {
 	mux := http.DefaultServeMux
-
 	mux.HandleFunc("/", controller.ServeWebpage)
-	mux.HandleFunc("/user", controller.ServeWebpage)
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	mux.HandleFunc("/user", controller.ServeUsersWebPage)
 	mux.HandleFunc("/register", controller.RegisterHardware)
 	mux.HandleFunc("/executeScript", controller.ExecuteTestScriptHandler)
 	mux.HandleFunc("/authenticateToken", controller.CheckForExsistingHardwareToken)
