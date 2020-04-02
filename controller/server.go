@@ -2,33 +2,81 @@ package controller
 
 import (
 	"../domain"
-	"fmt"
-	"net/url"
-	"strings"
-	"sync"
-
 	"encoding/json"
+	"fmt"
 	"github.com/prometheus/common/log"
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 )
 
 //This is the server controller. It contains all server handlers.
 const checkForExsistingHardwareTokenURL = "http://ec2-54-82-98-123.compute-1.amazonaws.com/CheckForExistingHardwareToken"
 const getScriptsByHardwareTokenURL = "http://ec2-54-82-98-123.compute-1.amazonaws.com/GetScriptsByHardwareToken"
+const getUserInfo = "http://ec2-54-82-98-123.compute-1.amazonaws.com/GetUserInfo"
+
+var currentWebPage = domain.WebPage{
+	Title:           "Diaverse",
+	Scripts:         nil,
+	Loggedin:        false,
+	LoggedInUser:    "",
+	LoggedInHWToken: "",
+	Content:         "",
+}
+
+func ServeUsersWebPage(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	req, err := http.NewRequest(http.MethodGet, getUserInfo, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.ParseForm()
+	req.Form.Set("hwtoken", currentWebPage.LoggedInHWToken)
+	req.Form.Set("user", currentWebPage.LoggedInUser)
+
+	_, err = http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	t, err := template.ParseFiles("templates/user.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//parse the login template and serve
+	e := t.Execute(w, currentWebPage)
+	if e != nil {
+		log.Fatal(e)
+	}
+}
 
 //ServeWebpage listens on the root directory of the hosted web page and serves the needed html to the user
 func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 	//todo; define a way for a user to remain logged in across sessions
 	//create a new login page struct
 	r.ParseForm()
+	if strings.Contains(r.URL.String(), "user") {
+		ServeUsersWebPage(w, r)
+		return
 
-	if r.Method == http.MethodGet && r.FormValue("loginUsr") != "" {
-
-		u := r.FormValue("loginUsr")
-		hw := r.FormValue("loginPass")
+	} else if (r.Method == http.MethodGet && r.FormValue("loginUsr") != "") || currentWebPage.Loggedin {
+		u := ""
+		hw := ""
+		if !currentWebPage.Loggedin {
+			u = r.FormValue("loginUsr")
+			hw = r.FormValue("loginPass")
+			currentWebPage.LoggedInUser = u
+			currentWebPage.LoggedInHWToken = hw
+		} else {
+			u = currentWebPage.LoggedInUser
+			hw = currentWebPage.LoggedInHWToken
+		}
 
 		form := url.Values{
 			"username": {u},
@@ -42,7 +90,9 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 		if resp.StatusCode != 202 {
 			log.Info("Detected Invalid Login Attempt via Hardware UI ")
 		} else {
-			log.Info(r.FormValue("loginUsr") + " Has Logged On.")
+			if r.FormValue("loginUsr") != "" {
+				log.Info(r.FormValue("loginUsr") + " Has Logged On.")
+			}
 		}
 
 		form = url.Values{
@@ -54,103 +104,110 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		log.Info(resp.StatusCode)
+		type row struct {
+			HardwareToken string `json:"Hardwaretoken"`
+			Script        string `json:"Script"`
+			ScriptID      int    `json:"ScriptID"`
+		}
 
-		s := []domain.TestScript{}
+		s := make(map[string]row)
+
 		c, e := ioutil.ReadAll(resp.Body)
 		if e != nil {
 			log.Info(string(c))
 			log.Fatal(e)
 		}
-		log.Warn(string(c))
+
 		e = json.Unmarshal(c, &s)
 		if e != nil {
 			log.Fatal(e)
 		}
 
-		fmt.Println(s)
-		//sample data
-		sampleScripts := []domain.TestScript{
-			domain.TestScript{
-				TestCases: []domain.TestCase{
-					domain.TestCase{
-						HardwareOutput: []string{"Test Case one"},
-						HardwareInput:  []string{"two"},
-						Result:         0,
-						TotalPassed:    0,
-						TotalFailed:    0,
-					},
-					domain.TestCase{
-						HardwareOutput: []string{"Test Case Two"},
-						HardwareInput:  []string{"two"},
-						Result:         0,
-						TotalPassed:    0,
-						TotalFailed:    0,
-					},
-					domain.TestCase{
-						HardwareOutput: []string{"Test Case three"},
-						HardwareInput:  []string{"two"},
-						Result:         0,
-						TotalPassed:    0,
-						TotalFailed:    0,
-					},
-				},
-				PassPercent: 0,
-			},
-			domain.TestScript{
-				TestCases: []domain.TestCase{
-					domain.TestCase{
-						HardwareOutput: []string{"Test Case one"},
-						HardwareInput:  []string{"two"},
-						Result:         0,
-						TotalPassed:    0,
-						TotalFailed:    0,
-					},
-					domain.TestCase{
-						HardwareOutput: []string{"Test Case Two"},
-						HardwareInput:  []string{"two"},
-						Result:         0,
-						TotalPassed:    0,
-						TotalFailed:    0,
-					},
-					domain.TestCase{
-						HardwareOutput: []string{"Test Case three"},
-						HardwareInput:  []string{"two"},
-						Result:         0,
-						TotalPassed:    0,
-						TotalFailed:    0,
-					},
-				},
-				PassPercent: 0,
-			},
+		scriptsContents := make(map[int]string)
+		i := 0
+		for range s {
+			i++
+		}
+		scripts := make([]domain.TestScript, i)
+		i = 0
+		for _, v := range s {
+			scriptsContents[v.ScriptID] = v.Script
+			scrp := domain.TestScript{}
+			e = json.Unmarshal([]byte(v.Script), &scrp)
+			scripts[i] = scrp
 		}
 
+		//sample data
+		//sampleScripts := []domain.TestScript{
+		//	domain.TestScript{
+		//		TestCases: []domain.TestCase{
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case one"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case Two"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case three"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//		},
+		//		PassPercent: 0,
+		//	},
+		//	domain.TestScript{
+		//		TestCases: []domain.TestCase{
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case one"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case Two"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case three"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//		},
+		//		PassPercent: 0,
+		//	},
+		//}
+
 		//process template
-		page := domain.WebPage{
-			Title:     "Diaverse Login Screen",
-			AuthToken: "",
-			Scripts:   sampleScripts,
-			Loggedin:  true,
-		}
+		currentWebPage.Scripts = scripts
 
 		t, err := template.ParseFiles("templates/login.html")
 		if err != nil {
 			log.Fatal(err)
 		}
-
+		currentWebPage.Loggedin = true
 		//parse the login template and serve
-		e = t.Execute(w, page)
+		e = t.Execute(w, currentWebPage)
 		if e != nil {
 			log.Fatal(e)
 		}
 
 	} else {
-		//login screen
-		page := domain.WebPage{
-			Title:     "Diaverse Login Screen",
-			AuthToken: "",
-			Loggedin:  false,
-		}
 
 		t, err := template.ParseFiles("templates/login.html")
 		if err != nil {
@@ -158,7 +215,7 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//parse the login template and serve
-		e := t.Execute(w, page)
+		e := t.Execute(w, currentWebPage)
 		if e != nil {
 			log.Fatal(e)
 		}
@@ -203,16 +260,25 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 			scriptInProgress.Unlock()
 			return
 		}
+		r.ParseForm()
 
 		script := domain.TestScript{}
 		e := json.Unmarshal(scriptJSON, &script)
-		if e != nil {
+		if e != nil && r.FormValue("script") == "" {
 
 			w.Write([]byte("Invalid Script format."))
+
 			scriptInProgress.Lock()
 			scriptInProgress.bool = false
 			scriptInProgress.Unlock()
 			return
+		} else {
+			scriptJSON = []byte(r.Form.Get("script"))
+			fmt.Printf(string(scriptJSON))
+			e := json.Unmarshal(scriptJSON, &script)
+			if e != nil {
+				log.Info("Invalid script format.")
+			}
 		}
 
 		scriptError := ExecuteTestScript(&script)
@@ -229,6 +295,9 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println(string(j))
 			w.Write(j)
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
 		}
 	} else {
 		w.Write([]byte("Test script already in progress, resend script after current script completes, or cancel current script."))

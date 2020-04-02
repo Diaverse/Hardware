@@ -6,9 +6,6 @@ import (
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"context"
 	"fmt"
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/wav"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 	"io/ioutil"
 	"log"
@@ -17,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 ///	TEXT TO SPEECH ///
@@ -156,6 +152,22 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	}, SpeechExampleError{}
 
 }
+func PrepareAudioFiles(audioFiles []string) {
+	for _, text := range audioFiles {
+		if !CheckForFile("audio/" + text) {
+			req := SpeechRequest{
+				Text:         text,
+				LanguageCode: "en-US",
+				SsmlGender:   "FEMALE",
+				VoiceName:    "en-us-Wavenet-C",
+			}
+
+			log.Println("Attempting to write to file, dir = audio/\"" + text + "\".wav")
+			req.SpeakToFile("/home/pi/Hardware/audio/\"" + text + "\".wav")
+
+		}
+	}
+}
 
 //SpeakAloud is a function which accepts a string of text as its only parameter, it then matches that text
 //to a file name within our audio store. If i cannot find the audio file it generates it and stores it.
@@ -174,71 +186,17 @@ func SpeakAloud(text string) bool {
 
 	}
 
-	f, err := os.Open("/home/pi/Hardware/audio/\"" + text + "\".wav")
-	if err != nil {
-		log.Println(err)
-		log.Fatal("Could not complete required audio I/O.")
-	}
+	filepath := "/home/pi/Hardware/audio/\"" + text + "\".wav"
 
-	streamer, format, err := wav.Decode(f)
+	args := []string{filepath}
+	cmd := exec.Command("aplay", args...)
+
+	err := cmd.Run()
 	if err != nil {
-		log.Println(err)
 		return false
 	}
 
-	defer streamer.Close()
-
-	//start the speaker, specify the files sample rate and the buffer size. larger the buffer the better the stability, the smaller the lower the latency.
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second*2/3))
-	speaker.Play(streamer)
-	log.Println("Beginning To speak. \n\n")
-
-	done := make(chan bool)
-	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-		done <- true
-	})))
-
-	<-done
-	log.Println("Finished Speaking.")
 	return true
-}
-
-func SpeakAloudWithChan(text string, done chan bool) {
-
-	if !CheckForFile("audio/" + text) {
-		req := SpeechRequest{
-			Text:         text,
-			LanguageCode: "en-US",
-			SsmlGender:   "FEMALE",
-			VoiceName:    "en-us-Wavenet-C",
-		}
-
-		log.Println("Attempting to write to file, dir = audio/\"" + text + "\".wav")
-		req.SpeakToFile("/home/pi/Hardware/audio/\"" + text + "\".wav")
-
-	}
-
-	f, err := os.Open("/home/pi/Hardware/audio/\"" + text + "\".wav")
-	if err != nil {
-		log.Println(err)
-		log.Fatal("Could not complete required audio I/O.")
-	}
-
-	streamer, format, err := wav.Decode(f)
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer streamer.Close()
-
-	//start the speaker, specify the files sample rate and the buffer size. larger the buffer the better the stability, the smaller the lower the latency.
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second*2/3))
-	speaker.Play(streamer)
-	log.Println("Beginning To speak. \n\n")
-
-	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-		done <- true
-	})))
 
 }
 
@@ -297,7 +255,6 @@ func Recognize() (string, float64, error) {
 	stderr, err := cmd.StderrPipe() //Stderr for whatever reason.
 
 	//We need to start our goroutine from the main thread
-	fmt.Println("STARTING.")
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println("Error starting Cmd", err)
