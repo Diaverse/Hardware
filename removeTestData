@@ -1,6 +1,0 @@
-#!/bin/bash
-
-inputfile="testdata.txt"
-cat $inputfile | while read username token; do
-    echo "delete from hardwareTokens;"
-done | mysql VUI;

@@ -2,66 +2,282 @@ package controller
 
 import (
 	"../domain"
-	service "../service"
 	"encoding/json"
+	"fmt"
 	"github.com/prometheus/common/log"
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"sync"
 )
 
 //This is the server controller. It contains all server handlers.
+const checkForExsistingHardwareTokenURL = "http://ec2-54-82-98-123.compute-1.amazonaws.com/CheckForExistingHardwareToken"
+const getScriptsByHardwareTokenURL = "http://ec2-54-82-98-123.compute-1.amazonaws.com/GetScriptsByHardwareToken"
+const getUserInfo = "http://ec2-54-82-98-123.compute-1.amazonaws.com/GetUserInfo"
 
-//ServeLogin listens on the root directory of the hosted web page and serves the needed html to the user
-func ServeLogin(w http.ResponseWriter, r *http.Request) {
-	//todo; define a way for a user to remain logged in across sessions
-	//create a new login page struct
-	page := domain.LoginPage{
-		Title:     "Diaverse Login Screen",
-		AuthToken: "",
-		Content:   "<html><p>Hello</p></html>",
+var currentWebPage = domain.WebPage{
+	Title:           "Diaverse",
+	Scripts:         nil,
+	Loggedin:        false,
+	LoggedInUser:    "",
+	LoggedInHWToken: "",
+	Content:         "",
+}
+
+func ServeUsersWebPage(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	req, err := http.NewRequest(http.MethodGet, getUserInfo, nil)
+	if err != nil {
+		log.Fatal(err)
 	}
-	t, err := template.ParseFiles("templates/index.html")
+
+	req.ParseForm()
+	req.Form.Set("hwtoken", currentWebPage.LoggedInHWToken)
+	req.Form.Set("user", currentWebPage.LoggedInUser)
+
+	_, err = http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(dir)
+	filedir := ""
+	if strings.Contains(dir, "test") {
+		//we are in test mode, the point of execution is different and therefore
+		//so are the relative paths.
+
+		filedir = "../templates/user.html"
+	} else {
+		filedir = "templates/user.html"
+	}
+
+	t, err := template.ParseFiles(filedir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//parse the login template and serve
-	t.Execute(w, page)
+	e := t.Execute(w, currentWebPage)
+	if e != nil {
+		log.Fatal(e)
+	}
 }
 
-func ServeScriptListView(w http.ResponseWriter, r *http.Request) {
-	//page := domain.ListPage{
-	//	Title: "Diaverse Script View",
-	//	ScriptList: []domain.TestScript{
-	//		domain.TestScript{
-	//			Cases: []domain.TestCase{
-	//				domain.TestCase{
-	//					Responses:      []string{"Hello, how are you"},
-	//					ExpectedOutput: []string{"I am fine"},
-	//				},
-	//				domain.TestCase{
-	//					Responses:      []string{"what are you doing?"},
-	//					ExpectedOutput: []string{"absolutely nothing."},
-	//				},
-	//			},
-	//			Result: true,
-	//		},
-	//		domain.TestScript{
-	//			Cases:  []domain.TestCase{},
-	//			Result: true,
-	//		},
-	//	},
-	//	SelectedScript: "Script One",
-	//}
+//ServeWebpage listens on the root directory of the hosted web page and serves the needed html to the user
+func ServeWebpage(w http.ResponseWriter, r *http.Request) {
+	//todo; define a way for a user to remain logged in across sessions
+	//create a new login page struct
+	r.ParseForm()
+	if strings.Contains(r.URL.String(), "user") {
+		ServeUsersWebPage(w, r)
+		return
 
-	//t, err := template.ParseFiles("templates/ScriptList.html")
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	////parse the login template and serve
-	//t.Execute(w, page)
+	} else if (r.Method == http.MethodGet && r.FormValue("loginUsr") != "") || currentWebPage.Loggedin {
+		u := ""
+		hw := ""
+		if !currentWebPage.Loggedin {
+			u = r.FormValue("loginUsr")
+			hw = r.FormValue("loginPass")
+			currentWebPage.LoggedInUser = u
+			currentWebPage.LoggedInHWToken = hw
+		} else {
+			u = currentWebPage.LoggedInUser
+			hw = currentWebPage.LoggedInHWToken
+		}
+
+		form := url.Values{
+			"username": {u},
+			"hwtoken":  {hw},
+		}
+
+		resp, err := http.PostForm(checkForExsistingHardwareTokenURL, form)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if resp.StatusCode != 202 {
+			log.Info("Detected Invalid Login Attempt via Hardware UI ")
+		} else {
+			if r.FormValue("loginUsr") != "" {
+				log.Info(r.FormValue("loginUsr") + " Has Logged On.")
+			}
+		}
+
+		form = url.Values{
+			"hardwareToken": {hw},
+		}
+		//get scripts
+		resp, err = http.PostForm(getScriptsByHardwareTokenURL, form)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		type row struct {
+			HardwareToken string `json:"Hardwaretoken"`
+			Script        string `json:"Script"`
+			ScriptID      int    `json:"ScriptID"`
+		}
+
+		s := make(map[string]row)
+
+		c, e := ioutil.ReadAll(resp.Body)
+		if e != nil {
+			log.Info(string(c))
+			log.Fatal(e)
+		}
+
+		e = json.Unmarshal(c, &s)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+		scriptsContents := make(map[int]string)
+		i := 0
+
+		for range s {
+			i++
+		}
+
+		scripts := make([]domain.TestScript, i)
+		i = 0
+
+		for _, v := range s {
+			scriptsContents[v.ScriptID] = v.Script
+			scrp := domain.TestScript{}
+			e = json.Unmarshal([]byte(v.Script), &scrp)
+			j, _ := json.Marshal(scrp)
+			currentWebPage.ScriptsJSON = append(currentWebPage.ScriptsJSON, j)
+			scripts[i] = scrp
+		}
+
+		//sample data
+		//sampleScripts := []domain.TestScript{
+		//	domain.TestScript{
+		//		TestCases: []domain.TestCase{
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case one"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case Two"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case three"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//		},
+		//		PassPercent: 0,
+		//	},
+		//	domain.TestScript{
+		//		TestCases: []domain.TestCase{
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case one"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case Two"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//			domain.TestCase{
+		//				HardwareOutput: []string{"Test Case three"},
+		//				HardwareInput:  []string{"two"},
+		//				Result:         0,
+		//				TotalPassed:    0,
+		//				TotalFailed:    0,
+		//			},
+		//		},
+		//		PassPercent: 0,
+		//	},
+		//}
+
+		//process template
+		currentWebPage.Scripts = scripts
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(dir)
+		filedir := ""
+		if strings.Contains(dir, "test") {
+			//we are in test mode, the point of execution is different and therefore
+			//so are the relative paths.
+
+			filedir = "../templates/login.html"
+		} else {
+			filedir = "templates/login.html"
+		}
+
+		t, err := template.ParseFiles(filedir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		currentWebPage.Loggedin = true
+		//parse the login template and serve
+		e = t.Execute(w, currentWebPage)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+	} else {
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(dir)
+		filedir := ""
+
+		if strings.Contains(dir, "test") {
+			//we are in test mode, the point of execution is different and therefore
+			//so are the relative paths.
+
+			filedir = "../templates/login.html"
+		} else {
+			filedir = "templates/login.html"
+		}
+
+		t, err := template.ParseFiles(filedir)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//parse the login template and serve
+		e := t.Execute(w, currentWebPage)
+		if e != nil {
+			log.Fatal(e)
+		}
+	}
+}
+
+func ServeLogoutPage(w http.ResponseWriter, r *http.Request) {
+	currentWebPage.Loggedin = false
+	currentWebPage.LoggedInUser = ""
+	currentWebPage.LoggedInHWToken = ""
+	ServeWebpage(w, r)
 }
 
 var scriptInProgress struct {
@@ -96,16 +312,25 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 			scriptInProgress.Unlock()
 			return
 		}
+		r.ParseForm()
 
 		script := domain.TestScript{}
 		e := json.Unmarshal(scriptJSON, &script)
-		if e != nil {
+		if e != nil && r.FormValue("script") == "" {
 
 			w.Write([]byte("Invalid Script format."))
+
 			scriptInProgress.Lock()
 			scriptInProgress.bool = false
 			scriptInProgress.Unlock()
 			return
+		} else {
+			scriptJSON = []byte(r.Form.Get("script"))
+			fmt.Printf(string(scriptJSON))
+			e := json.Unmarshal(scriptJSON, &script)
+			if e != nil {
+				log.Info("Invalid script format.")
+			}
 		}
 
 		scriptError := ExecuteTestScript(&script)
@@ -120,8 +345,11 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 			if e != nil {
 				log.Fatal("cannot create result JSON for current test, fatal")
 			}
-
+			fmt.Println(string(j))
 			w.Write(j)
+			scriptInProgress.Lock()
+			scriptInProgress.bool = false
+			scriptInProgress.Unlock()
 		}
 	} else {
 		w.Write([]byte("Test script already in progress, resend script after current script completes, or cancel current script."))
@@ -129,5 +357,35 @@ func ExecuteTestScriptHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterHardware(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func CheckForExsistingHardwareToken(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
+	token := r.FormValue("hardwareToken")
+	if token == "" {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, checkForExsistingHardwareTokenURL, strings.NewReader(token))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Info(resp.StatusCode)
+
+	type ServerResp struct {
+		user          string
+		hardwareToken string
+	}
+}
+
+func AuthorizeToken(token string) {
 
 }
