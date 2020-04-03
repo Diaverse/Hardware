@@ -6,9 +6,6 @@ import (
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"context"
 	"fmt"
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/wav"
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 	"io/ioutil"
 	"log"
@@ -17,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 ///	TEXT TO SPEECH ///
@@ -63,9 +59,10 @@ func (st *SpeechRequest) SpeakToFile(outputFile string) {
 	//Write the contents of the response body to a file
 
 	err = ioutil.WriteFile(outputFile, resp.AudioContent, 0644)
+	log.Println(err)
 	checkErr(err)
 
-	fmt.Printf("TTS Successfully written to %s", outputFile)
+	fmt.Printf("TTS Successfully written to %s\n\n", outputFile)
 }
 
 func (pt *SpeechRequest) SpeakFromFileToFile(inputFile string, outputFile string) {
@@ -134,7 +131,15 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	//create and return the request
 	return texttospeechpb.SynthesizeSpeechRequest{
 		AudioConfig: &texttospeechpb.AudioConfig{
-			AudioEncoding: texttospeechpb.AudioEncoding_LINEAR16,
+			AudioEncoding:        texttospeechpb.AudioEncoding_LINEAR16,
+			SpeakingRate:         0,
+			Pitch:                0,
+			VolumeGainDb:         0,
+			SampleRateHertz:      16000,
+			EffectsProfileId:     nil,
+			XXX_NoUnkeyedLiteral: struct{}{},
+			XXX_unrecognized:     nil,
+			XXX_sizecache:        0,
 		},
 
 		Voice: &texttospeechpb.VoiceSelectionParams{
@@ -147,44 +152,52 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	}, SpeechExampleError{}
 
 }
+func PrepareAudioFiles(audioFiles []string) {
+	for _, text := range audioFiles {
+		if !CheckForFile("audio/" + text) {
+			req := SpeechRequest{
+				Text:         text,
+				LanguageCode: "en-US",
+				SsmlGender:   "FEMALE",
+				VoiceName:    "en-us-Wavenet-C",
+			}
 
-func SpeakAloud(text string) {
+			log.Println("Attempting to write to file, dir = audio/\"" + text + "\".wav")
+			req.SpeakToFile("/home/pi/Hardware/audio/\"" + text + "\".wav")
 
-	if !CheckForFile("/audio/" + text) {
+		}
+	}
+}
+
+//SpeakAloud is a function which accepts a string of text as its only parameter, it then matches that text
+//to a file name within our audio store. If i cannot find the audio file it generates it and stores it.
+func SpeakAloud(text string) bool {
+
+	if !CheckForFile("audio/" + text) {
 		req := SpeechRequest{
 			Text:         text,
 			LanguageCode: "en-US",
 			SsmlGender:   "FEMALE",
 			VoiceName:    "en-us-Wavenet-C",
 		}
-		log.Println("Attempting to write to file, dir = audio/" + text + ".wav")
-		req.SpeakToFile("/home/pi/Hardware/audio/" + text + ".wav")
+
+		log.Println("Attempting to write to file, dir = audio/\"" + text + "\".wav")
+		req.SpeakToFile("/home/pi/Hardware/audio/\"" + text + "\".wav")
+
 	}
-	log.Println("opening file")
-	f, err := os.Open("/home/pi/Hardware/audio/" + text + ".wav")
+
+	filepath := "/home/pi/Hardware/audio/\"" + text + "\".wav"
+
+	args := []string{filepath}
+	cmd := exec.Command("aplay", args...)
+
+	err := cmd.Run()
 	if err != nil {
-		log.Println(err)
-		log.Fatal("Could not complete required audio I/O.")
+		return false
 	}
 
-	streamer, format, err := wav.Decode(f)
-	if err != nil {
-		log.Println(format)
-		log.Println(err)
-		log.Fatal("Could not construct streamer from decoded input file")
-	}
+	return true
 
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	done := make(chan bool)
-	speaker.Play(streamer, beep.Callback(func() {
-		done <- true
-	}))
-
-	//wait for the file to stop playing
-	<-done
-
-	//must be called.
-	streamer.Close()
 }
 
 //short hand for quick error checks
@@ -242,7 +255,6 @@ func Recognize() (string, float64, error) {
 	stderr, err := cmd.StderrPipe() //Stderr for whatever reason.
 
 	//We need to start our goroutine from the main thread
-	fmt.Println("STARTING.")
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println("Error starting Cmd", err)
@@ -290,13 +302,6 @@ func Recognize() (string, float64, error) {
 			}
 		}
 	}()
-
-	//We need to start our goroutine from the main thread
-	err = cmd.Start()
-	if err != nil {
-		fmt.Println("Error starting Cmd", err)
-		os.Exit(1)
-	}
 
 	//We need to wait for a transcription before we can return said transcription
 	err = cmd.Wait()
