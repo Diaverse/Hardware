@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 )
@@ -44,7 +45,22 @@ func ServeUsersWebPage(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	t, err := template.ParseFiles("templates/user.html")
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(dir)
+	filedir := ""
+	if strings.Contains(dir, "test") {
+		//we are in test mode, the point of execution is different and therefore
+		//so are the relative paths.
+
+		filedir = "../templates/user.html"
+	} else {
+		filedir = "templates/user.html"
+	}
+
+	t, err := template.ParseFiles(filedir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -200,8 +216,22 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 
 		//process template
 		currentWebPage.Scripts = scripts
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(dir)
+		filedir := ""
+		if strings.Contains(dir, "test") {
+			//we are in test mode, the point of execution is different and therefore
+			//so are the relative paths.
 
-		t, err := template.ParseFiles("templates/login.html")
+			filedir = "../templates/login.html"
+		} else {
+			filedir = "templates/login.html"
+		}
+
+		t, err := template.ParseFiles(filedir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -213,8 +243,24 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		t, err := template.ParseFiles("templates/login.html")
+		fmt.Println(dir)
+		filedir := ""
+
+		if strings.Contains(dir, "test") {
+			//we are in test mode, the point of execution is different and therefore
+			//so are the relative paths.
+
+			filedir = "../templates/login.html"
+		} else {
+			filedir = "templates/login.html"
+		}
+
+		t, err := template.ParseFiles(filedir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -224,13 +270,14 @@ func ServeWebpage(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			log.Fatal(e)
 		}
-
 	}
 }
 
-func ServeUsersPage(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-
+func ServeLogoutPage(w http.ResponseWriter, r *http.Request) {
+	currentWebPage.Loggedin = false
+	currentWebPage.LoggedInUser = ""
+	currentWebPage.LoggedInHWToken = ""
+	ServeWebpage(w, r)
 }
 
 var scriptInProgress struct {

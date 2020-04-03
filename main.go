@@ -9,7 +9,6 @@ import (
 //This file simply starts the local server
 func main() {
 	StartServer()
-	//service.Recognize()
 }
 
 func StartServer() {
@@ -20,7 +19,7 @@ func StartServer() {
 	mux.HandleFunc("/register", controller.RegisterHardware)
 	mux.HandleFunc("/executeScript", controller.ExecuteTestScriptHandler)
 	mux.HandleFunc("/authenticateToken", controller.CheckForExsistingHardwareToken)
-
+	mux.HandleFunc("/logout", controller.ServeLogoutPage)
 	controller.InitilizeStructs()
 	log.Info("Starting server on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
