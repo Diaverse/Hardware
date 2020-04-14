@@ -9,6 +9,7 @@ type TestCase struct {
 }
 
 type TestScript struct {
+	ScriptID    int        `json:"ScriptID, omitempty"`
 	TestCases   []TestCase `json:"testCases"`
 	PassPercent float64    `json:"passPercent, omitempty"`
 }
