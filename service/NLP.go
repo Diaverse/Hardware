@@ -152,6 +152,7 @@ func (st *SpeechRequest) CraftTextSpeechRequest() (texttospeechpb.SynthesizeSpee
 	}, SpeechExampleError{}
 
 }
+
 func PrepareAudioFiles(audioFiles []string) {
 	for _, text := range audioFiles {
 		if !CheckForFile("audio/" + text) {

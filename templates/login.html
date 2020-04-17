@@ -67,11 +67,6 @@
                         </ul>
                         <ul class="navbar-nav ml-auto">
                             <li class="nav-item">
-                                <a class="nav-link" href="/user">
-                                    <span class="no-icon">Account</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link" href="/logout">
                                     <span class="no-icon">Log out</span>
                                 </a>
@@ -99,32 +94,26 @@
                                             <th>Action</th>
                                             </thead>
                                             <tbody>
-                                            <td>
-                                            </td>
                                             {{range $index, $element := .Scripts}}
-
+                                                <tr>
                                                 <td>
-                                                    {{$index}}
+                                                    {{$element}}
                                                 </td>
-                                                    <td>
-                                                        <a type="submit" href="/executeScript?script={{$element}}"
-                                                        class="btn btn-info btn-fill pull-right">Run</a>
-                                                    </td>
-
-                                                {{range $index2, $element2 := $element.TestCases}}
-                                                    <tr>
-                                                        <td> {{$element2}}</td>
-                                                    </tr>
-                                                {{end}}
                                                 <td>
+                                                    {{$element.ScriptID}}
                                                 </td>
-
+                                                <td>
+                                                    <a type="submit" href="/executeScript?script={{$index}}"
+                                                    class="btn btn-info btn-fill pull-right">Run</a>
+                                                </td>
+                                                </tr>
                                             {{end}}
 
                                             </tbody>
                                         </table>
 
                                     </div>
+                                    <button onclick="/stopScript">Stop Current Test</button>
                                 </div>
                             </div>
                         </div>
@@ -135,18 +124,26 @@
     </div>
 
 {{else}}
-    <div >
-        <h1>Diaverse Hardware Login.</h1>
-        <form style="text-align:center;" id="login" class="input-group" method="GET">
+    <div style="background-image: url('/static/assets/img/full-screen-image-3.jpg'); background-size:cover; background-repeat: no-repeat; width: 100%; height: 100%; position: absolute;top: 0; left: 0;">
+        <div style="  position: fixed;
+                      top: 33%;
+                      left: 33%;
+                      border: #0b2e13 3px solid;
+                      padding: 75px;
+                      background-color: rgba(0,51,44,0.76);
+                    -webkit-filter: blur(150px);
+                      filter: url('/static/assets/img/sidebar-4.jpg');
+                        ">
 
-            <input type="text" class="input-field" placeholder="User ID" id="loginUsr" name="loginUsr" required>
+            <h1 style="color: white">Diaverse Hardware Login.</h1>
+            <form style="" id="login" class="input-group" method="GET">
+                <input type="text" class="input-field" placeholder="User ID" id="loginUsr" name="loginUsr" required>
+                <input type="password" class="input-field" placeholder="Hardware Token" id="loginPass" name="loginPass" required>
+                <input type="submit">
+            </form>
+        </div>
 
-            <input type="password" class="input-field" placeholder="Password" id="loginPass" name="loginPass" required>
-
-            <input type="submit">
-        </form>
     </div>
-
 {{end}}
 
 </body>

@@ -1,2 +1,0 @@
-username1 token1
-username2 token2
