@@ -1,5 +1,7 @@
 Diaverse Hardware
 ---
+
+### [Demo Video](https://drive.google.com/file/d/11IsJcnSEC78HiT-WOI7iNa1AWvLDNo9g/view?usp=sharing)
 ## About 
 This repository contains the code used to power the testing hardware for the diaverse project. The hardware is responsible for interacting with the VUI under test and offers a small GUI to allow the user to start and stop test scripts. It uses the 
 Google Cloud Platform API's for speech to text and text to speech and a low cost raspberry pi.  
