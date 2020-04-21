@@ -51,3 +51,10 @@ Finally, edit your .bashrc to include the following
 
 
 At this point you should be good to go, you have the API's enabled, the keys downloaded and exported, and the dependencies installed.  
+
+To start the hardware server go the following commands `go build ./... && go build *.go && ./main`
+
+At this point the server should be listening on port 8080, you can view the web UI by navigating to `http://<IP Address Of your PI>:8080`. 
+
+## Logging in 
+To use the test hardware login with your given username and harware token. You should then see a list of all test scripts assosiated with your user.
